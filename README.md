@@ -46,10 +46,13 @@ A pictorial representation of the graph object is provided below:
 
  ```yaml
 @article{GNN4ID,
-  title={XG-NID: Dual-Modality Network Intrusion Detection using a Heterogeneous Graph Neural Network and Large Language Model},
+  title={XG-NID: Dual-modality network intrusion detection using a heterogeneous graph neural network and large language model},
   author={Farrukh, Yasir Ali and Wali, Syed and Khan, Irfan and Bastian, Nathaniel D},
-  journal={arXiv preprint arXiv:2408.16021},
-  year={2024}
+  journal={Expert Systems with Applications},
+  volume={287},
+  pages={128089},
+  year={2025},
+  publisher={Elsevier}
 }
 ```
 
