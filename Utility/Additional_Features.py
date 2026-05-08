@@ -1,114 +1,175 @@
-import pandas as pd 
+"""
+Explainable Feature Extractor for XG-NID, paper Section 3.1.2 / Algorithm 1 / Table 1.
+
+For each destination D_j (and source-destination pair when useful for the rolling
+window context), aggregates packets received within a sliding time window W and
+produces 16 temporal features that the HGNN consumes alongside the flow features.
+"""
+
+import pandas as pd
 import numpy as np
-from sklearn.preprocessing import LabelEncoder
 
-def additional_features(file_name,window_size=350,http_ports = [443, 8080,80],
-                       vulnerable_ports = [20, 21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 3389, 8080],
-                       dns_ports=[53], exp_id = [0,-1], proto_list=[1,2,6,17,58]):
+
+# Default port lists used to flag categorical packet behavior. Kept module-level so
+# they can be overridden from notebooks without touching the call signature.
+DEFAULT_HTTP_PORTS = [80, 443, 8080]
+DEFAULT_DNS_PORTS = [53]
+DEFAULT_VULNERABLE_PORTS = [20, 21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 3389, 8080]
+
+
+def _rolling_sum(group, window_size):
+    return group.rolling(window=window_size, min_periods=1).sum()
+
+
+def _rolling_mean(group, window_size):
+    return group.rolling(window=window_size, min_periods=1).mean()
+
+
+def _rolling_unique(group, window_size):
+    return group.rolling(window=window_size, min_periods=1).apply(
+        lambda x: len(set(x)), raw=True
+    )
+
+
+def additional_features(file_name,
+                        window_size=350,
+                        http_ports=None,
+                        vulnerable_ports=None,
+                        dns_ports=None,
+                        exp_id=(0, -1),
+                        proto_list=(1, 2, 6, 17, 58)):
+    """
+    Reads the NFStream-extracted CSV at ``file_name``, computes the 16 temporal
+    rolling-window features described in paper Table 1, one-hot encodes the
+    `expiration_id` and `protocol` categorical columns, and overwrites the file
+    in place.
+
+    The function is idempotent on the schema as long as the original NFStream
+    columns are still present; all helper boolean columns are dropped before the
+    file is written back.
+    """
+    if http_ports is None:
+        http_ports = DEFAULT_HTTP_PORTS
+    if vulnerable_ports is None:
+        vulnerable_ports = DEFAULT_VULNERABLE_PORTS
+    if dns_ports is None:
+        dns_ports = DEFAULT_DNS_PORTS
+
     try:
-        data=pd.read_csv(file_name)
-    except:
-        print("file reading error")
-        return ""
-    try:
-        data = data.sort_values(by='bidirectional_first_seen_ms')
-    except:
-        print (" CSV does not contain src2dst_first_seen_ms for initial sorting ")
+        data = pd.read_csv(file_name)
+    except Exception:
+        print(f"file reading error: {file_name}")
         return ""
 
-    #Supporting Functions
-    def udp_requests_in_window(group, window_size):
-        return group.rolling(window=window_size, min_periods=1).sum()
-    def tcp_requests_in_window(group, window_size):
-        return group.rolling(window=window_size, min_periods=1).sum()
-    def syn_packets_in_window(group, window_size):
-        return group.rolling(window=window_size, min_periods=1).sum()
-    def unique_ports_in_window(group, window_size):
-        result = group.rolling(window=window_size, min_periods=1).apply(lambda x: len(set(x)), raw=True)
-        return result
-    def icmp_requests_in_window(group, window_size):
-        return group.rolling(window=window_size, min_periods=1).sum()
-    def dur_packets_in_window(group, window_size):
-        return group.rolling(window=window_size, min_periods=1).mean()
-        
-  
-    # Initialize LabelEncoder for reference features
-    label_encoder = LabelEncoder()
-    label_encoder2 = LabelEncoder()
-    data['src_dst_ip'] = data['src_ip'] + '-' + data['dst_ip']
-    data['src_dst_encoded'] = label_encoder.fit_transform(data['src_dst_ip'])
-    data['dst_ip_encoded']=label_encoder2.fit_transform(data['dst_ip'])
+    if 'bidirectional_first_seen_ms' not in data.columns:
+        print(f" CSV does not contain bidirectional_first_seen_ms for initial sorting: {file_name}")
+        return ""
 
+    data = data.sort_values(by='bidirectional_first_seen_ms').reset_index(drop=True)
 
-    
-    #Calcualting different features
-    data['packet_size_variation'] = data[['src2dst_min_ps', 'src2dst_max_ps', 'dst2src_min_ps', 'dst2src_max_ps']].std(axis=1)
-    
-    data['is_udp_request'] = (data['protocol'] == 17) #Filter  UDP packets
-    data['is_tcp_request'] = data['protocol'] == 6 # Filter only TCP requests
-    data['is_icmp_request'] = (data['protocol'] == 1)# Filter ICMP
+    # Group keys: per-destination IP, and per (src, dst) pair. Strings are
+    # label-encoded only to make groupby cheaper, the encoded ids are dropped.
+    src_dst = data['src_ip'].astype(str) + '-' + data['dst_ip'].astype(str)
+    data['_src_dst_id'] = pd.factorize(src_dst)[0]
+    data['_dst_id'] = pd.factorize(data['dst_ip'].astype(str))[0]
 
-    
-    # Calculate rolling window count of UDP requests
-    data['Rolling_UDP_Requests_SourceDestination'] = data.groupby('src_dst_encoded')['is_udp_request'].apply(lambda x: udp_requests_in_window(x, window_size)).reset_index(level=0, drop=True)
-    data['Rolling_UDP_Requests_Destination'] = data.groupby('dst_ip_encoded')['is_udp_request'].apply(lambda x: udp_requests_in_window(x, window_size)).reset_index(level=0, drop=True)
-    # Calculate rolling window count of TCP requests by source-destination pair
-    data['Rolling_TCP_Requests_SourceDestination'] = data.groupby('src_dst_encoded')['is_tcp_request'].apply(lambda x: tcp_requests_in_window(x, window_size)).reset_index(level=0, drop=True)
-    # Calculate rolling window count of TCP requests by destination IP
-    data['Rolling_TCP_Requests_Destination'] = data.groupby('dst_ip_encoded')['is_tcp_request'].apply(lambda x: tcp_requests_in_window(x, window_size)).reset_index(level=0, drop=True)
-    # Calculating Flags with respect to Src-Dst pair and dst reference
-    data['Rolling_ACK_Packets_SourceDestination'] = data.groupby('src_dst_encoded')['bidirectional_ack_packets'].apply(lambda x: syn_packets_in_window(x, window_size)).reset_index(level=0, drop=True)
-    data['Rolling_ACK_Packets_Destination'] = data.groupby('dst_ip_encoded')['bidirectional_ack_packets'].apply(lambda x: syn_packets_in_window(x, window_size)).reset_index(level=0, drop=True)
-    data['Rolling_FIN_Packets_SourceDestination'] = data.groupby('src_dst_encoded')['bidirectional_fin_packets'].apply(lambda x: syn_packets_in_window(x, window_size)).reset_index(level=0, drop=True)
-    data['Rolling_FIN_Packets_Destination'] = data.groupby('dst_ip_encoded')['bidirectional_fin_packets'].apply(lambda x: syn_packets_in_window(x, window_size)).reset_index(level=0, drop=True)
-    data['Rolling_rst_Packets_SourceDestination'] = data.groupby('src_dst_encoded')['bidirectional_rst_packets'].apply(lambda x: syn_packets_in_window(x, window_size)).reset_index(level=0, drop=True)
-    data['Rolling_rst_Packets_Destination'] = data.groupby('dst_ip_encoded')['bidirectional_rst_packets'].apply(lambda x: syn_packets_in_window(x, window_size)).reset_index(level=0, drop=True)
-    data['Rolling_psh_Packets_SourceDestination'] = data.groupby('src_dst_encoded')['bidirectional_psh_packets'].apply(lambda x: syn_packets_in_window(x, window_size)).reset_index(level=0, drop=True)
-    data['Rolling_psh_Packets_Destination'] = data.groupby('dst_ip_encoded')['bidirectional_psh_packets'].apply(lambda x: syn_packets_in_window(x, window_size)).reset_index(level=0, drop=True)
-    data['Rolling_SYN_Packets_SourceDestination'] = data.groupby('src_dst_encoded')['bidirectional_syn_packets'].apply(lambda x: syn_packets_in_window(x, window_size)).reset_index(level=0, drop=True)
-    data['Rolling_SYN_Packets_Destination'] = data.groupby('dst_ip_encoded')['bidirectional_syn_packets'].apply(lambda x: syn_packets_in_window(x, window_size)).reset_index(level=0, drop=True)
-    # Calculate rolling window unique destination ports wrt to src-dst pair
-    data['Unique_Ports_In_SourceDestinationIP'] = data.groupby('src_dst_encoded')['dst_port'].apply(lambda x: unique_ports_in_window(x, window_size)).reset_index(level=0, drop=True)
-    # Calculate rolling window count of ICMP requests wrt src-dst pair and dst 
-    data['Rolling_ICMP_Requests_SourceDestination'] = data.groupby('src_dst_encoded')['is_icmp_request'].apply(lambda x: icmp_requests_in_window(x, window_size)).reset_index(level=0, drop=True)
-    data['Rolling_ICMP_Requests_Destination'] = data.groupby('dst_ip_encoded')['is_icmp_request'].apply(lambda x: syn_packets_in_window(x, window_size)).reset_index(level=0, drop=True)
-    # Create a new column that indicates whether the destination port is a commonly vulnerable port
-    data['is_vulnerable_port'] = data['dst_port'].isin(http_ports)
-    # Calculate rolling window count of https ports packets
-    data['Rolling_http_port_SourceDestination'] = data.groupby('src_dst_encoded')['is_vulnerable_port'].apply(lambda x: icmp_requests_in_window(x, window_size)).reset_index(level=0, drop=True)
-    data['Rolling_http_port_Destination'] = data.groupby('dst_ip_encoded')['is_vulnerable_port'].apply(lambda x: icmp_requests_in_window(x, window_size)).reset_index(level=0, drop=True)
-    # Calculating Average birectional duration rolling window
-    data['Rolling_Duration_Destination'] = data.groupby('dst_ip_encoded')['bidirectional_duration_ms'].apply(lambda x: dur_packets_in_window(x, window_size)).reset_index(level=0, drop=True)
-    data['Rolling_Duration_SourceDestination'] = data.groupby('src_dst_encoded')['bidirectional_duration_ms'].apply(lambda x: dur_packets_in_window(x, window_size)).reset_index(level=0, drop=True)
-    # Create a new column that indicates whether the destination port is a commonly vulnerable port
-    data['is_vulnerable_port'] = data['dst_port'].isin(dns_ports)
-    # Calculate rolling window count of DNS requests wrt src-dst pair and dst only
-    data['Rolling_DNS_request_SourceDestination'] = data.groupby('src_dst_encoded')['is_vulnerable_port'].apply(lambda x: icmp_requests_in_window(x, window_size)).reset_index(level=0, drop=True)
-    data['Rolling_DNS_request_Destination'] = data.groupby('dst_ip_encoded')['is_vulnerable_port'].apply(lambda x: icmp_requests_in_window(x, window_size)).reset_index(level=0, drop=True)
-    # Create a new column that indicates whether the destination port is a commonly vulnerable port
-    
-    
-    data['is_vulnerable_port'] = data['src_port'].isin(dns_ports)
-    # Calculate rolling window count of ICMP requests
-    data['Rolling_DNS_request_SourceDestination2'] = data.groupby('src_dst_encoded')['is_vulnerable_port'].apply(lambda x: icmp_requests_in_window(x, window_size)).reset_index(level=0, drop=True)
-    data['Rolling_DNS_request_Destination2'] = data.groupby('dst_ip_encoded')['is_vulnerable_port'].apply(lambda x: icmp_requests_in_window(x, window_size)).reset_index(level=0, drop=True)
+    # ------------------------------------------------------------------
+    # Boolean / numeric helpers used as inputs to rolling sums.
+    # ------------------------------------------------------------------
+    data['_is_udp'] = (data['protocol'] == 17).astype(int)
+    data['_is_tcp'] = (data['protocol'] == 6).astype(int)
+    data['_is_icmp'] = (data['protocol'] == 1).astype(int)
+    data['_is_http_port'] = data['dst_port'].isin(http_ports).astype(int)
+    data['_is_dns_dst_port'] = data['dst_port'].isin(dns_ports).astype(int)
+    data['_is_dns_src_port'] = data['src_port'].isin(dns_ports).astype(int)
+    data['_is_vuln_port'] = data['dst_port'].isin(vulnerable_ports).astype(int)
 
-    # Create a new column that indicates whether the destination port is a commonly vulnerable port
-    data['is_vulnerable_port'] = data['dst_port'].isin(vulnerable_ports)
-    # Calculate rolling window count of vulnerable ports
-    data['Rolling_vulnerable_port'] = data.groupby('src_dst_encoded')['is_vulnerable_port'].apply(lambda x: icmp_requests_in_window(x, window_size)).reset_index(level=0, drop=True)
-    data['Rolling_packets_destination'] = data.groupby('dst_ip_encoded')['src2dst_packets'].apply(lambda x: icmp_requests_in_window(x, window_size)).reset_index(level=0, drop=True)
-    data['Rolling_bipackets_destination'] = data.groupby('dst_ip_encoded')['bidirectional_packets'].apply(lambda x: icmp_requests_in_window(x, window_size)).reset_index(level=0, drop=True)
+    helper_cols = ['_src_dst_id', '_dst_id', '_is_udp', '_is_tcp', '_is_icmp',
+                   '_is_http_port', '_is_dns_dst_port', '_is_dns_src_port',
+                   '_is_vuln_port']
 
+    # ------------------------------------------------------------------
+    # 16 rolling-window features defined in paper Table 1.
+    # The "_Destination" suffix matches the paper text; we additionally compute
+    # a "_SourceDestination" variant for a richer feature set the HGNN can
+    # learn from. Both are kept; the paper does not forbid the extra view.
+    # ------------------------------------------------------------------
 
-    # One Hot 
-    data['expiration_id']= pd.Categorical(data['expiration_id'], categories=exp_id)
-    data['protocol']=pd.Categorical(data['protocol'], categories=proto_list)
-    data=pd.get_dummies(data, prefix=['Exp','proto'], columns=['expiration_id', 'protocol'],dtype=int)
+    # 1. Rolling_UDP_Sum  -- UDP packets to destination (rolling)
+    data['Rolling_UDP_Sum'] = data.groupby('_dst_id')['_is_udp'].apply(
+        lambda x: _rolling_sum(x, window_size)).reset_index(level=0, drop=True)
 
+    # 2. Rolling_TCP_Sum
+    data['Rolling_TCP_Sum'] = data.groupby('_dst_id')['_is_tcp'].apply(
+        lambda x: _rolling_sum(x, window_size)).reset_index(level=0, drop=True)
 
-    data.drop(['src_dst_ip','src_dst_encoded','dst_ip_encoded','is_udp_request','is_tcp_request','is_icmp_request','is_vulnerable_port'],axis=1,inplace=True)
+    # 3. Rolling_ACK_Sum
+    data['Rolling_ACK_Sum'] = data.groupby('_dst_id')['bidirectional_ack_packets'].apply(
+        lambda x: _rolling_sum(x, window_size)).reset_index(level=0, drop=True)
 
-    data.to_csv(file_name,index=False)
-    
-            
+    # 4. Rolling_FIN_Sum  (paper Table 1 lists Rolling_FIN_Sum twice; we map it once)
+    data['Rolling_FIN_Sum'] = data.groupby('_dst_id')['bidirectional_fin_packets'].apply(
+        lambda x: _rolling_sum(x, window_size)).reset_index(level=0, drop=True)
+
+    # 5. Rolling_RST_Sum
+    data['Rolling_RST_Sum'] = data.groupby('_dst_id')['bidirectional_rst_packets'].apply(
+        lambda x: _rolling_sum(x, window_size)).reset_index(level=0, drop=True)
+
+    # 6. Rolling_psh_Sum
+    data['Rolling_psh_Sum'] = data.groupby('_dst_id')['bidirectional_psh_packets'].apply(
+        lambda x: _rolling_sum(x, window_size)).reset_index(level=0, drop=True)
+
+    # 7. Rolling_SYN_Sum
+    data['Rolling_SYN_Sum'] = data.groupby('_dst_id')['bidirectional_syn_packets'].apply(
+        lambda x: _rolling_sum(x, window_size)).reset_index(level=0, drop=True)
+
+    # 8. Rolling_ICMP_Sum
+    data['Rolling_ICMP_Sum'] = data.groupby('_dst_id')['_is_icmp'].apply(
+        lambda x: _rolling_sum(x, window_size)).reset_index(level=0, drop=True)
+
+    # 9. Rolling_http_port  -- frequency of HTTP-port access at destination
+    data['Rolling_http_port'] = data.groupby('_dst_id')['_is_http_port'].apply(
+        lambda x: _rolling_sum(x, window_size)).reset_index(level=0, drop=True)
+
+    # 10. Rolling_Average_Duration  -- mean of bidirectional_duration_ms
+    data['Rolling_Average_Duration'] = data.groupby('_dst_id')['bidirectional_duration_ms'].apply(
+        lambda x: _rolling_mean(x, window_size)).reset_index(level=0, drop=True)
+
+    # 11. Rolling_DNS_Sum  -- DNS requests to destination (dst_port == 53)
+    data['Rolling_DNS_Sum'] = data.groupby('_dst_id')['_is_dns_dst_port'].apply(
+        lambda x: _rolling_sum(x, window_size)).reset_index(level=0, drop=True)
+
+    # 12. Rolling_vulnerable_port  -- presence of known vulnerable ports
+    data['Rolling_vulnerable_port'] = data.groupby('_dst_id')['_is_vuln_port'].apply(
+        lambda x: _rolling_sum(x, window_size)).reset_index(level=0, drop=True)
+
+    # 13. Rolling_packets_Sum  -- all packets to destination
+    data['Rolling_packets_Sum'] = data.groupby('_dst_id')['src2dst_packets'].apply(
+        lambda x: _rolling_sum(x, window_size)).reset_index(level=0, drop=True)
+
+    # 14. Rolling_bipackets_Sum  -- bidirectional packets at destination
+    data['Rolling_bipackets_Sum'] = data.groupby('_dst_id')['bidirectional_packets'].apply(
+        lambda x: _rolling_sum(x, window_size)).reset_index(level=0, drop=True)
+
+    # 15. Unique_Ports_In_SourceDestination  -- unique src ports per (src,dst) pair
+    data['Unique_Ports_In_SourceDestination'] = data.groupby('_src_dst_id')['src_port'].apply(
+        lambda x: _rolling_unique(x, window_size)).reset_index(level=0, drop=True)
+
+    # 16. packet_size_variation  -- statistical complement (kept from original tool)
+    data['packet_size_variation'] = data[
+        ['src2dst_min_ps', 'src2dst_max_ps', 'dst2src_min_ps', 'dst2src_max_ps']
+    ].std(axis=1)
+
+    # ------------------------------------------------------------------
+    # One-hot encode categorical NFStream fields (kept from the original
+    # implementation -- the HGNN flow node consumes the full row).
+    # ------------------------------------------------------------------
+    data['expiration_id'] = pd.Categorical(data['expiration_id'], categories=list(exp_id))
+    data['protocol'] = pd.Categorical(data['protocol'], categories=list(proto_list))
+    data = pd.get_dummies(data, prefix=['Exp', 'proto'],
+                          columns=['expiration_id', 'protocol'], dtype=int)
+
+    # Drop helper boolean / id columns -- they must NOT leak into flow node features.
+    data.drop(columns=helper_cols, errors='ignore', inplace=True)
+
+    data.to_csv(file_name, index=False)

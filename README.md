@@ -29,9 +29,9 @@ For our experimentation and real-time detection, we set a limit on the maximum n
 <p align="justify">
 As we have two types of nodes, we also have two different types of edges: link edges and contain edges. The link edges connect packet nodes to packet nodes, while the contain edges connect flow nodes to packet nodes. The attributes of each node and edge are as follows:
 
-1. **Flow Node**: 82 Features (Statistical Flow Features)
+1. **Flow Node**: ~76 Statistical Flow Features (NFStream output, plus the 16 explainable rolling-window features from paper Table 1, minus the meta columns dropped by `NIDSDataset` such as `id`, `vlan_id`, MAC/OUI, raw timestamps, and `bidirectional_*_packets`)
 2. **Packet Node**: 1500 Features (Payload Data Byte-wise)
-3. **Contain Edge**: 4 Features (Information of different packet layer sizes)
+3. **Contain Edge**: 4 Features (packet direction + IP / transport / payload sizes)
 4. **Link Edge**: 1 Feature (Time delta between each consecutive packet)
 
 A pictorial representation of the graph object is provided below:
