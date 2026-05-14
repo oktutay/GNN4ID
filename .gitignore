@@ -1,0 +1,22 @@
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+
+# Logs
+logs/*.log
+*.log
+
+# Local dataset (downloaded from Google Drive, too large for git)
+data/
+**/processed/
+**/raw/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
