@@ -122,7 +122,7 @@ class NIDSDataset(Dataset):
                          'id','src_mac','src_oui','dst_mac','dst_oui','vlan_id','tunnel_id','bidirectional_syn_packets','bidirectional_cwr_packets',
                          'bidirectional_ece_packets','bidirectional_urg_packets','bidirectional_ack_packets','bidirectional_psh_packets',
                          'bidirectional_rst_packets','bidirectional_fin_packets'], axis=1, inplace=True)
-                
+
                 # Creating Dummy variables for Expiration_ID and protocol
                 self.data['expiration_id']=pd.Categorical(self.data['expiration_id'], categories=[0,-1])
                 # Creating Dummy varaible for protocol, make sure to incorporate all the protocols. There are only 5 protocols in the CIC-IoT2023 dataset. Add protocol number if utilizing other dataset.
@@ -130,6 +130,16 @@ class NIDSDataset(Dataset):
                 self.data=pd.get_dummies(self.data, prefix=['Exp','proto'], columns=['expiration_id', 'protocol'],dtype=int)
                 # Getting the Label from the file name and provided dictionary
                 label = self._get_labels(files)
+
+            # Drop the temporary `is_vulnerable_port` helper column produced by
+            # the explainable feature extractor; it was used only as a rolling
+            # input and must not leak into flow node features (paper Sec 3.1.1
+            # specifies 76 flow features, no raw is_vulnerable_port boolean).
+            for tmp_col in ('is_vulnerable_port', 'is_http_port', 'is_dns_dst_port',
+                            'is_dns_src_port', 'is_vuln_port', 'is_udp_request',
+                            'is_tcp_request', 'is_icmp_request'):
+                if tmp_col in self.data.columns:
+                    self.data.drop(tmp_col, axis=1, inplace=True)
 
     
             ## Converting String into iterable list; needed for extracting individual packet features
@@ -446,7 +456,19 @@ def random_pick_rows(df, original, over):
 
 
 
-def Combining_classes(directory,classes_list,Number_in_individaul_class=20000, Number_of_test_samples=4000, label_dict= {'Benign': 0,'WebBased': 1,'Spoofing': 2,'Recon': 3,'Mirai': 4,'Dos' : 5,'DDos': 6,'BruteForce': 7}):
+def Combining_classes(directory, classes_list, Number_in_individaul_class=20000,
+                      Number_of_test_samples=4000, label_dict=None):
+    # Default label_dict uses the same shorthand as the rename mapping in
+    # GNN4ID.ipynb (`Dos-...`, `DDos-...`). Paper Tables 2/4 spell these as
+    # `DoS` / `DDoS` -- both spellings are accepted via the alias merge below.
+    if label_dict is None:
+        label_dict = {'Benign': 0, 'WebBased': 1, 'Spoofing': 2, 'Recon': 3,
+                      'Mirai': 4, 'Dos': 5, 'DDos': 6, 'BruteForce': 7}
+    # Auto-add paper-spelling aliases so callers can pass either form.
+    aliases = {'DoS': 'Dos', 'DDoS': 'DDos'}
+    for paper_form, code_form in aliases.items():
+        if code_form in label_dict and paper_form not in label_dict:
+            label_dict[paper_form] = label_dict[code_form]
     
     """
     Combines CSV files from specified classes into a single DataFrame, 
@@ -527,10 +549,21 @@ def split_csv(file_path, test_sample = 4000 , Number_in_individaul_class=20000):
     # Name for filtering the Mac-addresses
     name_check = name_file.split('-')[0]
     
+    # Attacker MAC addresses, paper Table 3.
+    attacker_macs = {
+        'dc:a6:32:dc:27:d5', 'e4:5f:01:55:90:c4', 'dc:a6:32:c9:e4:ab',
+        'ac:17:02:05:34:27', 'dc:a6:32:c9:e5:a4', 'dc:a6:32:c9:e4:d5',
+        'dc:a6:32:c9:e5:ef', 'dc:a6:32:c9:e4:90', 'b0:09:da:3e:82:6c',
+    }
+    src_is_attacker = df['src_mac'].isin(attacker_macs)
+    dst_is_attacker = df['dst_mac'].isin(attacker_macs)
+
     if name_check == 'Benign':
-        df[(df['src_mac']!='dc:a6:32:dc:27:d5') & (df['src_mac']!='e4:5f:01:55:90:c4') & (df['src_mac']!='dc:a6:32:c9:e4:ab') & (df['src_mac']!='ac:17:02:05:34:27') & (df['src_mac']!='dc:a6:32:c9:e5:a4') & (df['src_mac']!='dc:a6:32:c9:e4:d5') & (df['src_mac']!='dc:a6:32:c9:e5:ef') & (df['src_mac']!='dc:a6:32:c9:e4:90') & (df['src_mac']!='b0:09:da:3e:82:6c') & (df['dst_mac']!='dc:a6:32:dc:27:d5') & (df['dst_mac']!='e4:5f:01:55:90:c4') & (df['dst_mac']!='dc:a6:32:c9:e4:ab') & (df['dst_mac']!='ac:17:02:05:34:27') & (df['dst_mac']!='dc:a6:32:c9:e5:a4') & (df['dst_mac']!='dc:a6:32:c9:e4:d5') & (df['dst_mac']!='dc:a6:32:c9:e5:ef') & (df['dst_mac']!='dc:a6:32:c9:e4:90') & (df['dst_mac']!='b0:09:da:3e:82:6c')]
+        # Paper Section 3.2.1: drop benign flows that touch any attacker MAC.
+        df = df[~src_is_attacker & ~dst_is_attacker]
     else:
-        df=df[(df['src_mac']=='dc:a6:32:dc:27:d5') | (df['src_mac']=='e4:5f:01:55:90:c4') | (df['src_mac']=='dc:a6:32:c9:e4:ab') | (df['src_mac']=='ac:17:02:05:34:27') | (df['src_mac']=='dc:a6:32:c9:e5:a4') | (df['src_mac']=='dc:a6:32:c9:e4:d5') | (df['src_mac']=='dc:a6:32:c9:e5:ef') | (df['src_mac']=='dc:a6:32:c9:e4:90') | (df['src_mac']=='b0:09:da:3e:82:6c') | (df['dst_mac']=='dc:a6:32:dc:27:d5') | (df['dst_mac']=='e4:5f:01:55:90:c4') | (df['dst_mac']=='dc:a6:32:c9:e4:ab') | (df['dst_mac']=='ac:17:02:05:34:27') | (df['dst_mac']=='dc:a6:32:c9:e5:a4') | (df['dst_mac']=='dc:a6:32:c9:e4:d5') | (df['dst_mac']=='dc:a6:32:c9:e5:ef') | (df['dst_mac']=='dc:a6:32:c9:e4:90') | (df['dst_mac']=='b0:09:da:3e:82:6c')]
+        # Attack flows must have an attacker as either src or dst.
+        df = df[src_is_attacker | dst_is_attacker]
     
     if df.shape[0] > 35000:
         df_test = df.sample(n = test_sample, random_state=42)

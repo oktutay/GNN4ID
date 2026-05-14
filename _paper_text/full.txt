@@ -1,0 +1,1256 @@
+
+
+===== PAGE 1 =====
+
+XG-NID: Dual-Modality Network Intrusion Detection using a
+Heterogeneous Graph Neural Network and Large Language Model
+Yasir Ali Farrukha, Syed Walia, Irfan Khana,∗and Nathaniel D. Bastianb,∗
+aClean and Resilient Energy System Lab (CARES), Department of Electrical & Computer Engineering, Texas A&M University, College
+Station, TX, USA
+bArmy Cyber Institute, Department of Electrical Engineering & Computer Science, United States Military Academy, West Point, NY, USA
+A R T I C L E I N F O
+Keywords:
+Network Intrusion Detection
+Graph Neural Network
+Multi-modal Fusion
+Large Language Models
+Explainable AI
+A B S T R A C T
+In the rapidly evolving field of cybersecurity, the integration of flow-level and packet-level
+information for real-time intrusion detection remains a largely untapped area of research.
+This paper introduces "XG-NID," a novel framework that, to the best of our knowledge,
+is the first to fuse flow-level and packet-level data within a heterogeneous graph structure,
+offering a comprehensive analysis of network traffic. Leveraging a heterogeneous graph neural
+network (GNN) with graph-level classification, XG-NID uniquely enables real-time inference
+while effectively capturing the intricate relationships between flow and packet payload data.
+Unlike traditional GNN-based methodologies that predominantly analyze historical data, XG-
+NID is designed to accommodate the heterogeneous nature of network traffic, providing a
+robust and real-time defense mechanism. Our framework extends beyond mere classification;
+it integrates Large Language Models (LLMs) to generate detailed, human-readable explanations
+and suggest potential remedial actions, ensuring that the insights produced are both actionable
+and comprehensible. Additionally, we introduce a new set of flow features based on temporal
+information, further enhancing the contextual and explainable inferences provided by our
+model. To facilitate practical application and accessibility, we developed "GNN4ID," an open-
+source tool that enables the extraction and transformation of raw network traffic into the
+proposed heterogeneous graph structure, seamlessly integrating flow and packet-level data. Our
+comprehensive quantitative comparative analysis demonstrates that XG-NID achieves an F1
+score of 97% in multi-class classification, outperforming existing baseline and state-of-the-art
+methods. This sets a new standard in Network Intrusion Detection Systems (NIDS) by combining
+innovative data fusion with enhanced interpretability and real-time capabilities.
+1. Introduction
+In the dynamic and increasingly complex landscape of cybersecurity, Network Intrusion Detection Systems (NIDS)
+play a crucial role in protecting systems and networks from a wide range of cyber threats (Mallick and Nath,
+2024). The growing significance of cybersecurity is underscored by the rise in cyber-attacks driven by rapid digital
+expansion (Mwangi, 2024). In an era marked by unprecedented interconnectedness and technological advancement,
+the cybersecurity landscape faces an escalating challenge: the relentless wave of cyber threats targeting critical
+infrastructures, sensitive information, and the core functions of society (Farrukh et al., 2024a). As the digital landscape
+expands, so does the complexity and sophistication of cyber-attacks, necessitating a paradigm shift in defensive
+strategies (Cunningham, 2020). According to Gartner, by 2025, 30% of businesses in critical infrastructure will face a
+security breach, potentially leading to the shutdown of mission-critical cyber-physical systems (Gartner, Inc., 2021),
+highlighting the critical need for improved defensive measures.
+Traditional machine learning-based NIDS methodologies can be broadly categorized into two types: those that
+analyze flow information and those that scrutinize packet-level information (Farrukh et al., 2023). Flow-based NIDS
+analyze aggregated data about network traffic, such as the volume of data transferred between endpoints, the duration
+of connections, and the frequency of interactions. This approach is efficient for identifying patterns and anomalies at a
+higher level, such as Distributed Denial of Service (DDoS) attacks, which are characterized by unusually high volumes
+of traffic (Specht and Lee, 2004). However, flow-based systems can miss more nuanced attacks that are embedded
+within the payload of individual packets (Umer et al., 2017).
+∗Corresponding author.
+Email addresses: yasir.ali@tamu.edu (Y.A. Farrukh); syedwali@tamu.edu (S. Wali); irfankhan@tamu.edu (I. Khan);
+nathaniel.bastian@westpoint.edu (N.D. Bastian)
+Y.A. Farrukh et al.: Preprint submitted to Elsevier
+Page 1 of 19
+arXiv:2408.16021v1  [cs.CR]  27 Aug 2024
+
+
+===== PAGE 2 =====
+
+XG-NID: Dual-Modality Network Intrusion Detection using a HGNN and LLM
+Conversely, packet-based NIDS focus on the contents of individual packets, examining payloads for signatures of
+known exploits, malware, and other malicious content. This method excels at detecting attacks that rely on specific
+payload characteristics, such as SQL injection or buffer overflow attacks (Farrukh et al., 2022). Despite their detailed
+inspection capabilities, packet-based systems can be overwhelmed by high volumes of traffic and may fail to identify
+broader traffic patterns indicative of certain attacks.
+The inherent limitations of relying solely on either flow or packet-level information highlight the need for an
+integrated approach. Certain sophisticated attacks can exploit these limitations to bypass detection. For instance, an
+SQL injection attack, which embeds malicious SQL commands within a packet’s payload, might evade a flow-based
+NIDS because it does not generate significant anomalies in traffic patterns (Umer et al., 2017). Conversely, flow-based
+attacks can slip through packet-level NIDS because they do not involve malicious payloads but rather manipulate the
+volume and frequency of packets (Tan et al., 2014). This dichotomy underscores a critical gap in current machine
+learning-based NIDS technologies. By failing to leverage the complementary strengths of both flow and packet-level
+information, existing systems leave networks vulnerable to a range of attack vectors. Addressing this gap requires a
+novel approach that combines these two types of information into a unified framework, enabling more comprehensive
+threat detection.
+In response to these challenges, our paper proposes a novel method of multi-modal data fusion that integrates
+both flow and packet-level information, represented in a unique heterogeneous graph format. This approach leverages
+Graph Neural Networks (GNNs) to process and analyze the heterogeneous data, capturing the intricate relationships
+and patterns within network traffic. By representing network traffic as graphs, where nodes and edges encapsulate both
+flow and packet attributes, we can harness the strengths of both modalities of data. This fusion allows our system to
+detect a broader spectrum of cyber-attacks, improving overall detection accuracy. The graph-based representation also
+facilitates the learning of complex network patterns, which are essential for identifying sophisticated threats.
+Furthermore, we emphasize the importance of contextual explainability in cybersecurity. Traditional NIDS outputs
+are often cryptic, making it difficult for cyber analysts to understand and respond to threats effectively (Abou
+El Houda et al., 2022). By integrating explainability using contexual information from large language models (LLMs),
+our approach provides clear, actionable insights into detected threats, detailing the nature of the attack, affected
+components, and recommended mitigation strategies.
+In short, this paper emphasizes the importance of data fusion in network security and proposes a novel framework
+that integrates flow and packet-level information using GNNs, along with contextual and explainable inferences. By
+bridging the gap between these two data modalities and leveraging their combined information, our approach offers a
+robust and comprehensive solution to network intrusion detection. This framework not only enhances the detection of
+threats but also provides actionable insights that can lead to the development of intelligent systems capable of making
+autonomous decisions on appropriate responses, thereby paving the way for improved cybersecurity measures. The
+main contributions of this work are as follows:
+1) We present a novel framework "XG-NID" that fuses flow-level and packet-level data modalities in network traffic,
+providing contextual, explainable, and actionable insights to enhance model interpretability and support informed
+decision-making.
+2) We introduce an innovative method for fusing dual modalities of network traffic—flow and packet-level informa-
+tion—using heterogeneous graph structures for comprehensive analysis.
+3) We develop a heterogeneous graph neural network (HGNN) based on graph-level classification for NIDS, enabling
+real-time inference by utilizing dual-modality data and incorporating the heterogeneous nature of network traffic.
+4) We develop "GNN4ID," (Farrukh et al., 2024b) an open-source tool for extracting and transforming raw network
+traffic into our proposed heterogeneous graph structure, integrating flow and packet-level data.
+5) We propose a new set of flow features based on temporal information to aid in producing better contextual and
+explainable inferences.
+6) We present a methodology for providing detailed and human-readable explanations of the proposed HGNN model
+results by combining contextual information from LLMs.
+7) We provide a quantitative comparative analysis of our proposed methodology with other baseline and comparable
+approaches to highlight its effectiveness.
+The remainder of this paper is structured as follows: Section 2 reviews related works, covering the application
+of GNNs in NIDS and the role of explainable artificial intelligence (XAI) in NIDS. Section 3 details the adopted
+Y.A. Farrukh et al.: Preprint submitted to Elsevier
+Page 2 of 19
+
+
+===== PAGE 3 =====
+
+XG-NID: Dual-Modality Network Intrusion Detection using a HGNN and LLM
+methodology, including the dataset, proposed framework, its integral components, and their operation. Section 4
+presents the results and provides a comparative analysis. Section 5 concludes the paper and outlines potential future
+work.
+2. Related Works
+In this section, we review the existing literature in two parts: the application of GNNs in NIDS and the role of
+XAI in the NIDS domain. Notably, there is a significant gap in the research concerning the integration of packet-level
+and flow-level information for both inference and explainability. Our work aims to address this gap by leveraging data
+fusion through heterogeneous graph structures, extracting contextual information from both packet and flow levels, and
+performing graph-level classification to enable real-time inference with explainability. This comprehensive approach
+not only enhances the detection capabilities but also provides actionable insights, advancing the field of network
+security.
+2.1. Graph Neural Network
+The majority of the existing literature on GNN-based NIDS focuses on node-level and edge-level classification.
+These studies are primarily aimed at analyzing historical network traffic to understand past attacks or to visualize
+network activity in a more user-friendly manner, often lacking real-time inference capabilities (Messai and Seba,
+2023). Further, most of these works employ homogeneous graph representations of network traffic, which do not
+fully exploit the heterogeneous nature of network data. This leaves a gap in leveraging the heterogeneity of network
+traffic and providing real-time inference. We discuss several notable works herein, highlighting their contributions and
+limitations.
+Lo et al. (2022) presented "E-GraphSAGE" to classify network flows using edge-level classification. The model
+captures edge and topological information in IoT networks for classification. The authors enhanced the GraphSAGE
+(Hamilton et al., 2017) algorithm to directly exploit the structural information of the network flow and encode it in
+a graph. Despite these advancements, the scalability and real-time inference capabilities remain questionable due to
+the computational complexity of analyzing complete flow information. Chang and Branco (2024) further enhanced
+E-GraphSAGE by integrating residual learning and an attention mechanism to increase efficiency. They utilized E-
+GraphSAGE with residual learning to target minority class imbalance and introduced an edge-based residual graph
+attention network (E-ResGAT) to improve efficiency. However, the reliance on fixed neighborhood edge sampling and
+attention mechanisms might still face challenges in highly dynamic network environments.
+Zhou et al. (2020) proposed a supervised approach based on a Graph Convolutional Network (GCN) and network
+traces. They considered only the topological structure of the graph, omitting edge features and initializing node features
+as a vector of ones. This method can efficiently handle large graphs but may miss critical edge information that could
+enhance detection accuracy. Similarly, Zhang et al. (2022) suggested using a GCN for botnet detection. They used
+12 GCN layers to capture long-term dependencies in large botnet architectures. However, very deep GCN models are
+prone to over-smoothing, which can diminish the model’s ability to distinguish between classes.
+Altaf et al. (2023) presented a comprehensive GNN-based NIDS model capable of capturing relations in the
+network graph and combining both node and edge features to identify abnormal traffic behavior. This approach uses
+IP addresses and port numbers to represent Internet of Things (IoT) sessions as nodes and network flows as edges,
+which helps mitigate multiple attack vectors at the application and network layers. However, attacks dependent on
+payload content can still evade detection. A more general approach to detecting intrusions with a heterogeneous graph
+is proposed in (Pujol-Perich et al., 2022). The graph is built based on network flows, creating separate nodes for the
+source host, destination host, and the flow itself. This structure, combined with a nonstandard message-passing neural
+network (MPNN), improves the model’s ability to learn embeddings from flows. Despite its promising accuracy, the
+model was tested on a heavily pre-processed dataset, raising questions about its performance on more balanced and
+varied data.
+Cao et al. (2021) proposed representing packet traffic using a spatio-temporal graph to model features that vary with
+time. Their method aims to detect DDoS attacks in software-defined networking (SDN) environments using a Spatio-
+Temporal Graph Convolutional Network (ST-GCN) (Yu et al., 2017). While this approach effectively captures temporal
+dynamics, its applicability to a wider range of attacks remains to be seen. Premkumar et al. (2023) is the only paper
+we found that effectively integrates both flow and packet information utilizing Graph Representation Learning (GRL).
+Their approach first generates packet-level embeddings from graph representations, then combines these with flow-level
+Y.A. Farrukh et al.: Preprint submitted to Elsevier
+Page 3 of 19
+
+
+===== PAGE 4 =====
+
+XG-NID: Dual-Modality Network Intrusion Detection using a HGNN and LLM
+features for final prediction. While this method captures detailed packet information and broader flow characteristics,
+it lacks direct fusion of these features, potentially leading to increased computational overhead due to the two-step
+processing required.
+In short, while existing GNN-based NIDS models offer various methods for network intrusion detection, they
+often focus on either node or edge-level classification and typically lack the integration of heterogeneous information
+sources. Our proposed approach addresses these shortcomings by leveraging both packet and flow-level data within a
+heterogeneous graph framework, enabling more comprehensive and real-time intrusion detection. By utilizing graph-
+level classification, our model can better capture the complex relationships inherent in network traffic and provide
+robust defense mechanisms against a broader range of cyber threats.
+2.2. Explainable Artificial Intelligence
+Recent research in XAI has been actively applied to cybersecurity, particularly in specialized use cases like network
+intrusion detection and malware identification. Han et al. (2021) developed the DeepAID framework to interpret
+unsupervised deep learning-based anomaly detection systems for cybersecurity. This approach helps security analysts
+understand why a certain sample is considered anomalous by comparing the anomaly to a normal reference data point.
+XAI holds promise in enhancing the adoption of machine learning (ML) models within existing cybersecurity
+frameworks. However, several challenges still need to be addressed (Nadeem et al., 2023), particularly in making
+explanations more understandable for users and reducing the opacity of ML models within NIDS frameworks. To
+address these issues, Alwahedi et al. (2024) explored the integration of LLMs with XAI techniques. Consequently,
+recent research papers have focused on adding an LLM layer to the existing frameworks.
+Ziems et al. (2023) introduced LLM-DTE (Large Language Model Decision Tree Explanations), a method that
+utilizes LLM to generate natural language explanations for decision tree-based NIDS. Khediri et al. (2024) proposed an
+approach that integrates SHAP (SHapley Additive exPlanations) values with LLMs to generate human-understandable
+explanations for detected anomalies. These SHAP values provide a detailed explanation of individual predictions by
+measuring the impact of each feature on the final outcome (Moustafa et al., 2023). Their methodology, applied to the
+CICIDS2017 dataset, demonstrated how this combination of SHAP values and LLM can offer coherent responses
+regarding influential predictors of model outcomes. Similarly, Ali and Kostakos (2023) developed HuntGPT, a
+specialized intrusion detection dashboard that incorporates XAI frameworks like SHAP with a Random Forest classifier
+trained on the KDD99 dataset to enhance model interpretability.
+Despite these advancements, significant issues remain regarding the scalability, efficiency, and human-centric
+aspects of XAI-driven cybersecurity solutions. Current explanations based on SHAP values often lack the necessary
+contextual and temporal information, which is crucial for accurately identifying and explaining time-based attacks.
+Time-based attacks, such as DDoS attacks, unfold over specific periods, where the timing and sequence of network
+events are quite important. A more effective explanation would incorporate temporal information, with features
+highlighting a rapid influx of requests to the targeted server from specific IPs within a brief timeframe, providing
+a clearer understanding of why the attack was detected.
+Explaining payload-specific attacks based on network flow remains a challenge. The actual signature of payload-
+specific attacks, such as SQL injection, lies within the payload itself. These attacks can demonstrate benign behavior in
+network flow, with their malicious intent residing in the packet content. Thus, explanations must consider the payload
+to clearly convey why a prediction was made. Current methods that explain such attacks solely based on flow data fail to
+capture the critical details within the payload, leading to incomplete or inaccurate explanations. These shortcomings are
+addressed in this paper by enhancing the feature extraction process to include both contextual and temporal information
+for time-based attacks, and by ensuring payload-specific attacks are explained based on their content.
+3. Methodology
+In this section, we present the methodology employed to develop and evaluate our proposed framework for network
+intrusion detection. The framework leverages the fusion of flow and packet-level information through a HGNN to
+provide real-time, explainable, and actionable insights. We begin by providing details of the proposed framework,
+including the feature extraction and development, graph construction, and the integration of explainability through
+contextual inference. This is followed by details of the dataset used for training and testing. The methodology outlines
+the key components that contribute to the effectiveness of our approach, ensuring comprehensive analysis and robust
+intrusion detection capabilities.
+Y.A. Farrukh et al.: Preprint submitted to Elsevier
+Page 4 of 19
+
+
+===== PAGE 5 =====
+
+XG-NID: Dual-Modality Network Intrusion Detection using a HGNN and LLM
+Fig. 1. Illustration of the proposed framework "XG-NID". The framework, depicted here, demonstrates its capability to
+better identify network attacks either based on flow or packet-level information with detailed contextual information and
+potential remedial actions. The framework comprises of six key components: Flow and Feature generator, Explainable
+Feature Extractor, Graph Generator, GNN Model, Integrated Gradient Explainer, and Generative Explainer.
+3.1. Proposed Framework
+The proposed framework "XG-NID" presents a novel approach to network intrusion detection by integrating flow
+and packet-level information into a heterogeneous graph structure, enabling a more comprehensive analysis of network
+behavior. This fusion of multiple data modalities enhances the model’s ability to capture complex interactions within
+the network, leading to more accurate and effective intrusion detection. Moreover, the framework not only provides
+performant detection capabilities but also delivers detailed, human-readable explanations and potential remedial
+actions, ensuring that the insights generated are both actionable and understandable. The framework is composed
+of six key components, as illustrated in Fig. 1.
+The system initiates by capturing raw network traffic data (network packets), which are then processed by the
+first component, the Flow and Feature Generator. This component is responsible for generating network flows and
+extracting relevant features from both the flow and packet levels. These generated flows are subsequently passed to the
+Explainable Feature Extractor, which derives new features based on the temporal information from previous flows.
+Once the features have been generated and enhanced, the data is transferred to the Graph Generator. This component
+transforms the flow and packet-level features into a heterogeneous graph structure, which serves as the foundation for
+the subsequent inference process. The transformed graph is then analyzed by the GNN Model, the fourth component,
+which performs the core task of intrusion detection by classifying the network traffic as either benign or respective
+attack class.
+The output of the GNN Model is forwarded to both the Integrated Gradient Explainer and the Generative Explainer,
+components five and six, respectively. The Integrated Gradient Explainer identifies the most significant attributes of
+the graph structure that contributed to the model’s prediction, providing a localized explanation of the model’s output.
+Leveraging these local explanations, the Generative Explainer generates specific prompts and formulates detailed,
+human-readable explanations of the results. Also, it offers potential remedial actions, ensuring that the system’s outputs
+are not only accurate but also actionable and understandable.
+The following sub-sections provide the technical details of each component, offering a comprehensive understand-
+ing of how our framework is utilized for effective cyber threat detection and explanation.
+3.1.1. Flow and Feature Generator
+The Flow and Feature Generator is the first component of our proposed framework, responsible for processing
+raw network traffic and aggregating it into flows. The primary goal of this component is to extract features from raw
+network traffic for real-time inference. For our approach, we set a maximum limit of 20 packets per flow, following
+the work of the CIC-IoT2023 dataset (Neto et al., 2023). The decision to limit the flow to 20 packets is driven by our
+objective to enable real-time inference; allowing flows to accumulate based on default parameters could result in flow
+Y.A. Farrukh et al.: Preprint submitted to Elsevier
+Page 5 of 19
+
+
+===== PAGE 6 =====
+
+XG-NID: Dual-Modality Network Intrusion Detection using a HGNN and LLM
+Table 1
+Explainable Feature Set for Time-Based Network Intrusion Detection
+Feature Name
+Description
+Rolling_UDP_Sum
+Cumulative count of UDP packets received at the destination within a rolling time window.
+Rolling_TCP_Sum
+Cumulative count of TCP packets received at the destination within a rolling time window.
+Rolling_ACK_Sum
+Cumulative count of TCP acknowledgement packets received at the destination within a rolling time window.
+Rolling_FIN_Sum
+Cumulative count of TCP FIN packets received at the destination within a rolling time window.
+Rolling_RST_Sum
+Cumulative count of TCP RST packets received at the destination within a rolling time window.
+Rolling_fin_Sum
+Cumulative count of TCP FIN packets received at the destination within a rolling time window.
+Rolling_psh_Sum
+Cumulative count of TCP PSH packets received by the destination within a rolling time window.
+Rolling_SYN_Sum
+Cumulative count of TCP SYN packets received by the destination within a rolling time window.
+Rolling_ICMP_Sum
+Cumulative count of ICMP requests received by the destination within a rolling time window.
+Rolling_http_port
+Frequency of access attempts to well-known HTTP ports at the destination within a rolling time window.
+Rolling_Average_Duration
+Average duration of bidirectional communication sessions with the destination within a rolling time window.
+Rolling_DNS_Sum
+Cumulative count of DNS requests received by the destination within a rolling time window.
+Rolling_vulnerable_port
+Indicates the presence of known vulnerable ports at the destination within a rolling time window.
+Rolling_packets_Sum
+Cumulative count of all packets received at the destination within a rolling time window.
+Rolling_bipackets_Sum
+Cumulative count of bidirectional packets (both incoming and outgoing) associated with the destination within a rolling time window.
+Unique_Ports_In_SourceDestination
+Tracks the number of unique source ports used to communicate with a specific destination within a rolling time window.
+durations of up to 30 minutes (Aouini and Pekar, 2022). Additionally, we set an idle timeout of 120 seconds, meaning
+that if a flow remains inactive for this duration, it is concluded.
+The Flow and Feature Generator also segregates packet-level information with respect to its corresponding flow,
+ensuring that each flow includes payload information derived from its associated packets. This segregation is crucial for
+generating graph structures, as our objective is to unify flow and packet-level information into a cohesive representation.
+Built upon NFStream (Aouini and Pekar, 2022), the Flow and Feature Generator computes 76 flow-level features
+and 14 packet-level features. The primary focus of the packet features is to capture the payload information, which is
+crucial for detecting payload-specific attacks.
+Once the flows and their respective features are generated, the Flow and Feature Generator transforms the payload
+of each packet within a flow into a uniform feature space of 1500 features. This transformation is based on the method
+outlined in Farrukh et al. (2022), where the payload of each packet is represented by 1500 features derived from the
+bytes of the payload. The hexadecimal representation of each byte is converted into an integer ranging from 0 to 255,
+with each resulting integer forming one feature. In cases where the payload is shorter than 1500 bytes, zero padding
+is applied to maintain a consistent feature vector structure. For packets with no payload, the entire feature vector is
+padded with zeros.
+Mathematically, the feature space for a flow can be represented as follows:
+Features = [𝐹1, 𝐹2, … , 𝐹76, 𝑃payload, 𝑃flag, … , 𝑃layersize]
+(1)
+where:
+𝑃payload = [𝑃1500
+1
+, 𝑃1500
+2
+, … , 𝑃1500
+𝑛
+]
+𝑃flag = [𝑃𝑥
+1 , 𝑃𝑥
+2 , … , 𝑃𝑥
+𝑛]
+𝑃layersize = [𝑃𝑥
+1 , 𝑃𝑥
+2 , … , 𝑃𝑥
+𝑛]
+In this context:
+• 𝐹1, 𝐹2, … , 𝐹76 denote the 76 flow-level features, encapsulating various attributes related to the overall network flow.
+• 𝑃payload = [𝑃1500
+1
+, 𝑃1500
+2
+, … , 𝑃1500
+𝑛
+] represents the payload features of the packets within the flow, where each packet
+𝑃𝑖is expressed as a 1500-dimensional vector. The superscript 1500 denotes the dimensionality of each payload
+vector.
+• 𝑃flag = [𝑃𝑥
+1 , 𝑃𝑥
+2 , … , 𝑃𝑥
+𝑛] represents another set of packet-level features, such as flags, with dimensionality 𝑥for each
+packet.
+• 𝑃layersize = [𝑃𝑥
+1 , 𝑃𝑥
+2 , … , 𝑃𝑥
+𝑛] represents additional packet-level features, such as IP layer size, also with dimension-
+ality 𝑥for each packet.
+Y.A. Farrukh et al.: Preprint submitted to Elsevier
+Page 6 of 19
+
+
+===== PAGE 7 =====
+
+XG-NID: Dual-Modality Network Intrusion Detection using a HGNN and LLM
+Algorithm 1 Explainable Feature Extractor for NIDS
+Input:
+1:
+𝑊→Rolling time window
+2:
+𝐹→Conventional flow features
+Output:
+3:
+𝐸→Extracted features for NIDS
+Step 1: Initialize Sliding Window Tracking
+4: for each destination 𝐷𝑗do
+5:
+Initialize 𝑊𝑗←[0, 0, ..., 0] (size 𝑊)
+6: end for
+Step 2: Update Sliding Window and Calculate Temporal Features
+7: for each time step 𝑡𝑖do
+8:
+for each destination 𝐷𝑗do
+9:
+Update 𝑊𝑗with packets received at 𝑡𝑖
+10:
+Calculate temporal features 𝑇𝑗from 𝑊𝑗
+11:
+end for
+12: end for
+Step 3: Integrate Conventional and Temporal Features
+13: 𝐸←Combine 𝐹and 𝑇for all destinations
+Return:
+14: Extracted features 𝐸
+3.1.2. Explainable Feature Extractor
+Conventional features, developed by the first component, are typically effective for identifying volume-based
+attacks characterized by significant spikes in SYN requests or packet rates within a single flow but are less effective in
+detecting attacks that require understanding patterns across multiple flows. To address this limitation, the explainable
+feature extractor also extracts temporal features that capture statistics from previous flows. This approach involves
+analyzing the evolution of network flow statistics over time and identifying patterns across multiple flows. Techniques
+such as sliding window features, which aggregate statistics within specific time frames (e.g., connection attempts or
+packet rates over the last minute), provide a more comprehensive view of network activity and help identify deviations
+from normal behavior. Temporal correlation, which tracks the relationship between successive flows such as repeated
+scanning attempts from the same source, aids in identifying reconnaissance activities. By integrating these additional
+features, the detection system can better understand and explain the broader context of network traffic patterns, leading
+to a more performant approach for identifying and mitigating threats.
+Our proposed approach for extracting additional features is illustrated in Algorithm 1. This approach leverages
+sliding window and temporal techniques to enhance the detection and explanation of cyber-attacks. As detailed in Table
+1, the algorithm tracks and calculates various rolling window-based temporal features for each destination machine.
+These temporal features are systematically updated over time and are then integrated with conventional flow features.
+The resulting set of metrics offers a comprehensive framework for network intrusion detection, improving both the
+accuracy and interpretability of the system’s predictions. This integration of temporal and flow-based features allows for
+a more dynamic and context-aware understanding of network behavior, which is crucial for identifying and explaining
+complex, time-based attacks.
+3.1.3. Graph Generator
+To effectively utilize network traffic data for network intrusion detection, we transformed the extracted flow and
+packet features into a heterogeneous graph structure. This transformation leverages both flow-level and packet-level
+information, facilitating a comprehensive analysis of the network traffic. Our graph structure includes two types of
+nodes and two types of edges, enabling detailed and nuanced modeling of network activities.
+Let = (, ) represent our heterogeneous graph, where is the set of nodes and is the set of edges. The nodes
+in our graph are categorized into two types: flow nodes and packet nodes. Each flow node 𝑣𝑓∈𝑓corresponds to a
+unique network flow , and each packet node 𝑣𝑝∈𝑝represents an individual packet 𝑖within a flow having 𝑛
+Y.A. Farrukh et al.: Preprint submitted to Elsevier
+Page 7 of 19
+
+
+===== PAGE 8 =====
+
+XG-NID: Dual-Modality Network Intrusion Detection using a HGNN and LLM
+Fig. 2. Illustration of graph structure, fusing flow and packet level data modalities. The features of edges utilized in the
+generation of graph structures are highlighted on each edge. For ’link’ edge we are utilizing only one feature whereas for
+the contain edge the number of features are four.
+packets. Thus, the set of nodes is given by:
+= 𝑓∪𝑝
+(2)
+Each flow node 𝑣𝑓is associated with a feature vector 𝐡𝑣𝑓∈ℝ𝑑, derived from flow-level attributes. Similarly, each
+packet node 𝑣𝑝has a feature vector 𝐡𝑣𝑝∈ℝ1500, where the attributes are primarily based on packet payload data.
+Edges in the graph also fall into two categories: "contain" edges 𝑐and "link" edges 𝑙. A "contain" edge 𝑒𝑐∈𝑐
+connects a flow node 𝑣𝑓to its corresponding packet nodes 𝑣𝑝. The feature vector for a "contain" edge, 𝐚𝑒𝑐∈ℝ𝑏,
+includes the layer sizes and direction of the packet. The 𝑐are represented as:
+𝑐= {(𝑣𝑓, 𝑣𝑝𝑖) ∣1 ≤𝑖≤𝑛}
+(3)
+A "link" edge 𝑒𝑙∈𝑙connects sequential packet nodes within a flow, thereby forming a directed acyclic graph
+(DAG). The feature vector for a "link" edge, 𝐚𝑒𝑙, includes the time difference (𝑡𝛿) between two consecutive packets. 𝑙
+are represented as:
+𝑙= {(𝑣𝑝𝑖, 𝑣𝑝𝑖+1) ∣1 ≤𝑖< 𝑛}
+(4)
+The process of generating the graph structure is concisely presented in Algorithm 2. Additionally, we developed
+an open-source tool, GNN4ID (Farrukh et al., 2024b), which facilitates the transformation of raw network traffic
+into the proposed heterogeneous graph structure. GNN4ID effectively integrates the functionalities of our first three
+components, enabling users to seamlessly convert any raw network traffic data into the desired graph format. This
+tool comprehensively demonstrates the entire process, from extracting information from raw packet capture files to
+generating flow and packet-level features, and ultimately constructing the specified graph structure. A visual depiction
+of our graph structure is provided in Fig. 2, highlighting the detailed connections and attributes of both nodes and
+edges.
+3.1.4. Graph Neural Network Model
+The proposed HGNN model is designed to effectively process the dual modalities of network traffic packet-level and
+flow-level information—by leveraging a heterogeneous graph structure. The model is built upon the Graph Attention
+Convolution (GATConv) (Velickovic et al., 2017) approach to capture the intricate relationships between different
+types of nodes and edges in the network traffic graph.
+The layered architecture of the proposed HGNN model is as follows:
+ℎ(1)
+𝑖= ReLU
+(
+GATConv
+(
+ℎ(0)
+𝑖, 𝐀, 𝐄
+))
+(5)
+Y.A. Farrukh et al.: Preprint submitted to Elsevier
+Page 8 of 19
+
+
+===== PAGE 9 =====
+
+XG-NID: Dual-Modality Network Intrusion Detection using a HGNN and LLM
+Algorithm 2 Generation of Network Traffic Graphs
+Input: →𝐡𝑣𝑓, 𝐡𝑣𝑝for 𝑖in 
+1: Initialize: and as empty sets.
+2: for each packet 𝑖in flow do
+3:
+Create a packet node 𝑣𝑝for 𝑖.
+4:
+Add 𝑣𝑝to 𝑝.
+5: end for
+6: Create a flow node 𝑣𝑓representing flow 𝐹.
+7: Add 𝑣𝑓to 𝑓.
+8: for each packet node 𝑣𝑝corresponding to 𝑖do
+9:
+Add a "contain" edge 𝑒𝑐connecting 𝑣𝑓to 𝑣𝑝in 𝑐.
+10: end for
+11: for each 𝑖from 1 to || −1 do
+12:
+Add a "link" edge 𝑒𝑙connecting 𝑣𝑝𝑖and 𝑣𝑝𝑖+1 in 𝑙.
+13: end for
+Return: The graph = (, ).
+where ℎ(0)
+𝑖denotes the initial node features for each node type 𝑖, 𝐀represents the adjacency matrix, and 𝐄denotes
+the edge features. The GATConv layers learn attention scores for each edge, enabling the model to focus on the most
+relevant connections in the graph.
+In the HGNN model, both node and edge features are crucial for accurately capturing the characteristics of network
+traffic. The GATConv layers compute attention coefficients 𝛼𝑖𝑗for each edge (𝑖, 𝑗), which are then used to aggregate
+the features of neighboring nodes and edges. The aggregation function for the node embeddings at layer 𝑙is defined
+as:
+ℎ(𝑙)
+𝑖= 𝜎
+⎛
+⎜
+⎜⎝
+∑
+𝑗∈(𝑖)
+𝛼(𝑙)
+𝑖𝑗𝐖(𝑙)ℎ(𝑙−1)
+𝑗
++
+∑
+𝑒𝑖𝑗∈
+𝛼(𝑙)
+𝑖𝑗𝐖(𝑙)
+𝑒ℎ(𝑙−1)
+𝑒𝑖𝑗
+⎞
+⎟
+⎟⎠
+(6)
+where (𝑖) represents the neighbors of node 𝑖, 𝐖(𝑙) and 𝐖(𝑙)
+𝑒are the learnable weight matrices for nodes and edges,
+respectively, and 𝜎is a non-linear activation function (ReLU or LeakyReLU). The edge features ℎ(𝑙−1)
+𝑒𝑖𝑗
+are combined
+with the node features from the previous layer to provide a richer representation at each layer. This combination allows
+the model to capture both local (node-level) and global (edge-level) interactions within the graph.
+The HGNN model consists of two GATConv layers, each followed by a batch normalization step and a LeakyReLU
+activation function to introduce non-linearity:
+ℎ(2)
+𝑖= ReLU
+(
+BN
+(
+GATConv
+(
+ℎ(1)
+𝑖, 𝐀, 𝐄
+)))
+(7)
+Here, the batch normalization function BN(⋅) is applied to the output of the GATConv layer to stabilize the learning
+process, particularly in deep networks, by normalizing the output features. The LeakyReLU activation function ensures
+that the model can learn from both positive and negative feature values, thereby enhancing its ability to capture complex
+patterns in the data.
+Following the two convolutional layers, the node embeddings are aggregated into a single graph-level embedding
+using a global mean pooling operation:
+𝐡graph = GlobalMeanPool
+(
+ℎ(2)
+𝑖
+)
+(8)
+This pooling step generates a unified representation of the entire graph by averaging the embeddings of all nodes,
+ensuring that both packet-level and flow-level information are comprehensively captured.
+The graph-level embedding is then passed through a series of fully connected layers to produce the final
+classification output. These layers progressively reduce the dimensionality of the embedding while refining the learned
+features:
+Out = LogSoftmax (𝐖2 ⋅ReLU (𝐖1 ⋅ReLU (𝐖0 ⋅𝐡graph
+)))
+(9)
+Y.A. Farrukh et al.: Preprint submitted to Elsevier
+Page 9 of 19
+
+
+===== PAGE 10 =====
+
+XG-NID: Dual-Modality Network Intrusion Detection using a HGNN and LLM
+where 𝐖0, 𝐖1, and 𝐖2 are weight matrices for the fully connected layers, and LogSoftmax(⋅) converts the final output
+into class probabilities.
+The proposed HGNN model effectively integrates packet-level and flow-level information within a heterogeneous
+graph framework, combining node and edge features to capture the full spectrum of interactions in network traffic data.
+By utilizing GATConv layers with attention mechanisms, the model prioritizes critical connections within the graph,
+enhancing the overall accuracy of the classification.
+3.1.5. Integrated Gradient Explainer
+The fourth component in our system is the Integrated Gradient Explainer, which provides feature-based local
+explanations for each predicted outcome from the HGNN model. This explainer uses the Integrated Gradient approach
+to determine the contribution of each input feature to the network’s prediction (Sundararajan et al., 2017). One of
+the primary advantages of Integrated Gradients is that it does not require any modification to the original network
+architecture. It is implemented with a few calls to the standard gradient operator, making it simple and efficient to use.
+Moreover, this method ensures that the attributions are accurate and meaningful, as it satisfies key theoretical principles
+that make the explanations reliable.
+Integrated Gradients work by considering the path integral of the gradients of the prediction function 𝐹along a
+straight line from a baseline input to the actual input. If a baseline input is not provided, zero is used as the default
+value. The method computes the integral of the gradients at all points along this path, resulting in attributions that
+explain the importance of each feature in the input. Mathematically, this is represented as follows:
+IntegratedGrad𝑖(𝑥) = (𝑥𝑖−𝑥′
+𝑖) × ∫
+1
+𝛼=0
+𝜕𝐹(𝑥′ + 𝛼(𝑥−𝑥′))
+𝜕𝑥𝑖
+𝑑𝛼
+(10)
+Here, 𝜕𝐹
+𝜕𝑥𝑖represents the gradient of the prediction function 𝐹with respect to the 𝑖-th input feature. 𝑥is the actual
+input, and 𝑥′ is the baseline input. The integral accumulates these gradients along the path from 𝑥′ to 𝑥, weighting
+them by the difference between 𝑥and 𝑥′ along each feature dimension.
+Function 𝐹represents the prediction function of the HGNN. It maps the input features of the heterogeneous graph
+to the output prediction. In our context, 𝐹(𝑥) is the predicted outcome based on the input features 𝑥, which include
+node attributes, edge weights, and other relevant information from the heterogeneous graph.
+In our HGNN, the Integrated Gradient Explainer generates explanations by calculating the contributions of each
+feature in the heterogeneous graph to the network’s prediction. This approach helps us understand which features are
+most influential for each specific prediction, thereby making the model’s decisions more interpretable.
+3.1.6. Generative Explainer
+The generative explainer module uses a structured approach, integrating both flow and payload importance to
+create human-readable explanations. This process begins by utilizing the output of the Integrated Gradients Explainer
+to assess the importance of heterogeneous graph features. The extracted importance values are then used to create
+prompts, which are sent to the LLM (a Llama 3-8B model) to generate comprehensive explanations through zero-shot
+prompting.
+Developing a structured prompt is particularly critical in zero-shot prompting approach because it allows the LLM
+to generate accurate and contextually relevant explanations without requiring additional training on specific examples.
+The effectiveness of zero-shot prompting relies heavily on the quality of the prompts. Therefore, developing well-
+structured prompts is essential to guide the LLM in producing meaningful outputs. The process of crafting these
+prompts is detailed in Algorithm 3.
+The first step of this process involves initializing the prompt with a phrase that clearly states the predicted class
+from the HGNN. Specifically, we used the following initialization phrase (referred to as 𝑃init) : “The predicted class
+from GNN is {PredictedClass}.” This initial prompt sets the context for the LLM to focus on the specific prediction
+made by the GNN. Following this, the flow importance values are processed by sorting them in descending order and
+selecting the top features that contributed most to the prediction. These features and their corresponding actual values
+are then integrated into the second part of the prompt, which is constructed to provide specific details about the top
+contributing factors. This segment of the prompt is framed as: “The top features contributing to this prediction are:”
+followed by a list of features and their actual values (referred to as 𝑃part2).
+Y.A. Farrukh et al.: Preprint submitted to Elsevier
+Page 10 of 19
+
+
+===== PAGE 11 =====
+
+XG-NID: Dual-Modality Network Intrusion Detection using a HGNN and LLM
+Algorithm 3 Generative Explanation for GNN Predictions
+Input:
+1:
+𝐏imp →Importance values for payload features
+2:
+𝐏val →Actual values of payload features
+3:
+𝐅imp →Importance values for flow features
+4:
+𝐅val →Actual values of flow features
+5:
+𝐶pred →Class predicted by the GNN
+6:
+𝐍feat →Descriptive names of features
+Output:
+7:
+𝐆exp →Explanation generated by the LLM
+8: 𝑃init ←“The predicted class from GNN is { 𝐶pred }”
+9: 𝐅sorted ←Sort 𝐅imp in descending order
+10: 𝐅top ←Extract top 𝑛features from 𝐅sorted
+11: 𝑃part2 ←“The top features contributing to this prediction are:”
+12: for each 𝑖in 𝐅top do
+13:
+𝑃part2 ←𝑃part2+ “{ 𝐍feat[𝑖] } with actual value { 𝐅val[𝑖] }”
+14: end for
+15: 𝑃align ←Alignment section phrase
+16: 𝑄flow ←𝑃init + 𝑃part2 + 𝑃align
+17: 𝑅flow ←Send 𝑄flow to the LLM
+18: if 𝐶pred corresponds to payload-specific attacks then
+19:
+𝑃norm ←Normalize 𝐏imp vectors
+20:
+𝑃avg ←Calculate average importance of 𝐏norm
+21:
+𝑃sorted ←Sort in 𝐏avg ←descending order
+22:
+𝑃top ←Extract top 𝑛payloads from 𝐏sorted
+23:
+𝑃hex ←Convert 𝐏top from decimal to hex
+24:
+𝑃ascii ←Convert 𝐏hex into ASCII string
+25:
+𝑃payloadPrefix →Payload analysis phrase
+26:
+𝑄payload ←𝑃payloadPrefix + 𝐏ascii + 𝑃align
+27:
+𝑅payload ←Send 𝑄payload to the LLM
+28: end if
+29: Return 𝐆exp ←𝑅flow + 𝑅payload
+An alignment section is then added to the prompt. The alignment phrase (denoted as 𝑃align) is crucial as it instructs
+the LLM to focus on explaining the predicted outcome and its potential reasons without introducing new or unrelated
+information. The phrase used is: “Don’t expect any values on your own. Explain the predicted outcome and its potential
+reason along with the potential mitigation. Start your answer with "The predicted outcome is."
+These parts—(𝑃init, 𝑃part2, and 𝑃align)—are then combined to form a comprehensive query (𝑄flow), which is then
+sent to the LLM to generate the flow-based response. If the GNN predicts a payload-specific attack, such as web-based
+or bruteforce attacks, additional processing is done for the payload data. In this processing, the payload importance
+vectors are normalized, and the top payloads are converted into a human-readable ASCII string. Consequently, a
+second query (𝑄payload) is constructed to analyze the payload data. This query is prefixed with the phrase assigned
+to 𝑃payloadPrefix: “Analyze whether this payload of network flow is malicious or not. Give reason concisely." This query,
+along with the alignment section (𝑃align), is sent to the LLM to generate a corresponding response.
+Finally, the outputs from the flow and payload-based queries are combined to form the complete generative
+explanation (𝐺exp).This approach ensures that the explanations are accurate and understandable for both flow-based
+and payload-specific attacks.
+3.2. Dataset
+The CIC-IoT2023 dataset (Neto et al., 2023), developed by the Canadian Institute for Cybersecurity (CIC), is
+utilized to evaluate the effectiveness of our proposed framework. This dataset has been developed to capture the
+complexities and security challenges inherent in contemporary IoT networks, which are increasingly vulnerable to
+Y.A. Farrukh et al.: Preprint submitted to Elsevier
+Page 11 of 19
+
+
+===== PAGE 12 =====
+
+XG-NID: Dual-Modality Network Intrusion Detection using a HGNN and LLM
+Table 2
+Description of the CICIoT2023 Dataset.
+Type
+Target
+Total Number of Records
+Class Distribution
+Benign
+Benign
+1,098,195
+2.35%
+DDoS
+Attack
+33,984,560
+72.79%
+DoS
+Attack
+8,090,738
+17.33%
+Mirai
+Attack
+2,634,124
+5.64%
+Recon
+Attack
+354,565
+0.76%
+Spoofing
+Attack
+486,504
+1.04%
+WebBased
+Attack
+24,829
+0.05%
+Bruteforce
+Attack
+13,064
+0.03%
+Total
+46,686,579
+100%
+Table 3
+Attackers’ Device Names and MAC Addresses
+Device Name
+MAC Address
+Raspberry Pi 4—4 GB
+E4:5F:01:55:90:C4
+Raspberry Pi 4—2 GB
+DC:A6:32:C9:E4:D5
+Raspberry Pi 4—8 GB
+DC:A6:32:DC:27:D5
+Raspberry Pi 4—2 GB
+DC:A6:32:C9:E5:EF
+Raspberry Pi 4—2 GB
+DC:A6:32:C9:E4:AB
+Raspberry Pi 4—2 GB
+DC:A6:32:C9:E4:90
+Raspberry Pi 4—2 GB
+DC:A6:32:C9:E5:A4
+Ring Base Station
+B0:09:DA:3E:82:6C
+Fibaro Home Center Lite
+AC:17:02:05:34:27
+sophisticated cyber-attacks. This dataset is distinguished by its extensive coverage of network traffic, incorporating a
+wide array of IoT devices and diverse attack scenarios. Generated using a large-scale IoT topology comprising 105
+devices, the dataset accurately reflects the interconnected and dynamic nature of modern IoT environments.
+The dataset features 33 distinct attacks, systematically categorized into seven classes: Distributed Denial of Service
+(DDoS), Denial of Service (DoS), Reconnaissance, Web-based attacks, Brute Force attacks, Spoofing, and the Mirai
+botnet. These attacks were orchestrated by malicious IoT devices targeting other IoT devices, thereby creating realistic
+adversarial scenarios that are representative of actual threats faced by IoT ecosystems.
+CIC-IoT2023 is provided in two formats: raw network traffic data (in pcap files) and an extracted flow-based dataset,
+which is computed within a fixed-size packet window. The dataset is vast, comprising a total of 46,686,579 events and
+featuring 47 distinct attributes. Table 2 offers a comprehensive breakdown of the CIC-IoT2023 dataset, detailing the
+types of attacks, the targets of these attacks, the total number of records, the distribution of records used for training and
+validation, and the percentage distribution across different classes. The "total number of records" specifically refers to
+the quantity of feature tuples extracted from the original pcap files, which are summarized within a fixed-size packet
+window.
+3.2.1. Dataset Preprocessing
+The data preprocessing stage involved two tasks to ensure the quality and balance of the dataset used for our
+analysis. The first task was focused on filtering the generated flows from GNN4ID based on the MAC addresses of
+the attackers provided in the CIC-IoT2023 dataset (Neto et al., 2023). We applied a filtering process where any flow
+instance with either the source or destination MAC address matching one of the known attacker addresses was retained
+and rest was removed from attack classes. Conversely, any flow associated with these attacker MAC addresses was
+excluded from the benign class. The specific MAC addresses identified as attackers are detailed in Table 3.
+The second task involved addressing the significant class imbalance present in the CIC-IoT2023 dataset. Given the
+uneven distribution of classes, a combination of undersampling and oversampling techniques was employed to create
+a balanced dataset. Initially, 20% of the data samples were set aside to form the test set, with majority classes capped
+at 4,000 samples for this purpose. The remaining data were then adjusted, either through undersampling the majority
+Y.A. Farrukh et al.: Preprint submitted to Elsevier
+Page 12 of 19
+
+
+===== PAGE 13 =====
+
+XG-NID: Dual-Modality Network Intrusion Detection using a HGNN and LLM
+Table 4
+Data Distribution After Data Preprocessing
+Type
+Flows After Filter
+Test Set (20%)
+Train Set (80%)
+Benign
+1,306,976
+4,000
+20,000
+DDoS
+33,137,785
+4,000
+20,000
+DoS
+7,889,155
+4,000
+20,000
+Mirai
+2,568,491
+4,000
+20,000
+Recon
+931,805
+4,000
+20,000
+Spoofing
+55,807
+4,000
+20,000
+WebBased
+5,449
+1,090
+20,000
+Bruteforce
+2,336
+467
+20,000
+classes or oversampling the minority classes, to construct a training set of 20,000 samples per class. This approach
+ensured a more balanced distribution of samples across all classes, as illustrated in Table 4.
+An important aspect of our preprocessing approach was the careful handling of attack subclasses. Since each main
+attack class in the CIC-IoT2023 dataset contains several subclasses, we ensured that the sampling process maintained
+proportional representation across these subclasses. This approach allowed us to preserve the diversity of attack types
+while achieving a more coherent and balanced dataset.
+4. Results and Analysis
+This section presents the results and analysis of our proposed framework, divided into two sub-headings:
+Performance Analysis and Explainability Analysis. The Performance Analysis subsection provides a comprehen-
+sive evaluation of the proposed approach, comparing its effectiveness against baseline models and state-of-the-art
+techniques. This comparison is aimed at demonstrating the superiority and robustness of our model in detecting
+network intrusions by fusing packet and flow level information together. Conversely, the Explainability Analysis
+subsection explores how our framework leverages contextual information to produce explainable and actionable
+insights, thereby enhancing the interpretability of the model’s predictions and facilitating informed decision-making
+by security operators.
+It is important to note that all results presented in this section are based on multi-class classification, encompassing
+eight distinct categories from the CIC-IoT2023 dataset. These evaluations were conducted under consistent experi-
+mental settings, ensuring identical data distribution and processing across all evaluation.
+4.1. Performance Analysis
+Conducting an apple-to-apple comparison for the proposed framework presents certain challenges, as our work is
+the first to fuse dual modalities—packet-level and flow-level information of network traffic—through a heterogeneous
+GNN, as per the authors knowledge. Consequently, comparing our framework with other approaches that solely utilize
+either flow-level or packet-level information may not provide an accurate assessment of its effectiveness. Furthermore,
+comparing our proposed HGNN with other graph-based approaches is also problematic, as the majority of existing
+works in NIDS utilizing GNNs focus on edge or node-level classification. These methods primarily aim at analyzing
+network traffic rather than providing real-time inference, as highlighted in Section 2. Therefore, comparing our graph-
+level classification with such node and packet-level classification makes no sense.
+Given that our approach emphasizes real-time inference with a focus on effectively fusing dual modalities of
+network traffic to improve detection of both flow-level and packet-level attacks, a direct comparison with existing
+methods is inherently complex. Therefore, to provide a comprehensive evaluation of our approach, we divided our
+performance analysis into two distinct parts.
+In the first part, we compare our framework with baseline models that either utilize flow information or payload
+information, offering a broad comparison with existing approaches. In the second part, we focus on state-of-the-art
+approaches that combine flow and packet-level information in some form, which allows us to evaluate our approach
+against more relevant benchmarks. This two-part analysis provides a balanced and thorough assessment of our
+framework’s effectiveness.
+Y.A. Farrukh et al.: Preprint submitted to Elsevier
+Page 13 of 19
+
+
+===== PAGE 14 =====
+
+XG-NID: Dual-Modality Network Intrusion Detection using a HGNN and LLM
+4.1.1. Baseline Comparisons
+In evaluating the baseline models, our objective is to offer a holistic view of the proposed framework when
+compared to approaches that solely rely on either flow-level or packet-level information. To provide deeper insights into
+the performance of the proposed framework, we also assessed the effectiveness of these baseline models on specific
+attack types—namely, payload-dependent attacks (such as brute force and web-based attacks) when relying on flow-
+level information, and payload-independent attacks when relying on packet-level information.
+We conducted experiments using several widely adopted machine learning models, including Random Forest,
+Logistic Regression, AdaBoost Classifier, Multilayer Perceptron, K-Nearest Neighbors (KNN), and a simple three-
+layered Deep Neural Network (DNN) with default parameters. These evaluations were performed separately using
+flow-level information and packet-level information to benchmark these models. For utilizing packet-level information,
+we followed the approach outlined in Farrukh et al. (2022) to extract payload data and train the models accordingly.
+Additionally, we incorporated several established approaches from the literature that use either flow-level or
+packet-level information, offering a more comprehensive comparison. Table 5 presents an overview of the comparison
+with approaches relying on flow-level information. The "Payload-Specific" column highlights the performance of the
+models on attacks that depend on the packet’s payload. Similarly, Table 6 provides a comparison with approaches that
+utilize packet-level information, where the "Flow-Specific" column shows the performance on attack classes that are
+independent of payload data.
+The results clearly demonstrate that our proposed framework outperforms the baseline models in both scenarios,
+underscoring the significance of incorporating dual modalities of network traffic. It is evident that approaches based
+solely on flow-level information underperform on attacks reliant on payload data, while approaches based on packet-
+level information exhibit weaknesses in detecting attacks that are not dependent on payload information. This highlights
+the necessity and effectiveness of our proposed dual-modality approach.
+Fig. 3. Performance comparison between the proposed framework and several state-of-the-art models that incorporate dual
+modalities of network traffic. The proposed framework outperforms all other approaches, achieving a 97% F1-Score—a
+metric widely recognized for evaluating multi-class classification.
+4.1.2. Dual-Modality State-of-the-Art
+One of the standout aspects of our proposed framework is the fusion of dual modalities—packet-level and flow-level
+information—in network security. This multi-modal data fusion represents a significant innovation but also presents
+a challenge in evaluating our framework against other approaches, as the integration of both types of information is
+quite uncommon in the existing literature. Despite this, we identified a few state-of-the-art approaches that, in some
+capacity, utilize both packet-level and flow-level information, albeit through multiple steps or separate processes.
+One such approach is presented by Premkumar et al. (2023), where the authors utilized packet-level informa-
+tion—specifically, the payload of packets—to compute embeddings of the packets within a flow. After generating
+these embeddings using a GNN, they combined the embeddings with respective flow features to perform classification,
+thereby leveraging dual modality. Another notable work by Kiflay et al. (2024) employs a two-step classification
+process. In their approach, two separate models are trained: one for flow-level information and another for packet-level
+information. This multimodal network traffic analysis approach, though effective, treats the modalities separately before
+combining them for final classification. Further, the TR-IDS framework proposed by Min et al. (2018) incorporates a
+Y.A. Farrukh et al.: Preprint submitted to Elsevier
+Page 14 of 19
+
+
+===== PAGE 15 =====
+
+XG-NID: Dual-Modality Network Intrusion Detection using a HGNN and LLM
+Table 5
+Comparison with Approaches Using Flow-level Information.
+Methods
+Performance Metrics
+Payload-
+Specific
+Precision
+Recall
+F1 Score
+Random Forest
+0.97
+0.96
+0.96
+0.92
+Logistic Regression
+0.82
+0.91
+0.85
+0.78
+Adaboost-Classifier
+0.42
+0.39
+0.41
+0.2
+Multilayer Perceptron
+0.87
+0.93
+0.9
+0.81
+KNeighborsClassifier
+0.92
+0.94
+0.93
+0.8
+DNN
+0.93
+0.95
+0.94
+0.88
+Conv-AE (Khan and Kim, 2020)
+0.89
+0.8
+0.86
+0.84
+IIDS (Narayan et al., 2023)
+0.77
+0.92
+0.81
+0.69
+CNN-LSTM (Gueriani et al., 2024)
+0.95
+0.96
+0.96
+0.86
+Proposed Work
+0.95
+0.99
+0.97
+0.94
+Table 6
+Comparison with Approaches Using Packet-level Information.
+Methods
+Performance Metrics
+Flow-
+Specific
+Precision
+Recall
+F1 Score
+Random Forest
+0.82
+0.64
+0.74
+0.71
+Logistic Regression
+0.64
+0.52
+0.53
+0.55
+Adaboost-Classifier
+0.47
+0.39
+0.35
+0.41
+Multilayer Perceptron
+0.78
+0.57
+0.62
+0.64
+KNeighborsClassifier
+0.84
+0.63
+0.7
+0.66
+DNN
+0.84
+0.75
+0.78
+0.74
+AEIDS (Pratomo et al., 2018)
+0.79
+0.64
+0.72
+0.64
+Packet2Vec (Goodman et al., 2020)
+0.68
+0.6
+0.62
+0.62
+EsPADA (Vidal et al., 2020)
+0.64
+0.6
+0.62
+0.58
+Proposed Work
+0.95
+0.99
+0.97
+0.98
+multi-stage processing pipeline. It uses word embeddings and a Text-CNN to extract features from packet payloads,
+which are then combined with flow features for classification. While these methods represent significant strides in
+multi-modal network security, they all rely on multi-step or multi-process approaches to fuse the dual modalities.
+In contrast, our proposed framework inherently fuses packet-level and flow-level information within a unified,
+heterogeneous graph structure, eliminating the need for additional processing steps. This seamless integration not only
+simplifies the processing pipeline but also enhances the model’s ability to detect sophisticated attacks that span both
+modalities. Moreover, our framework represents the first of its kind to fuse dual modalities through a heterogeneous
+graph, providing a novel and more holistic approach to network intrusion detection.
+When compared with these state-of-the-art methods, our proposed framework demonstrates superior performance,
+as highlighted in Fig. 3. The inherent fusion of packet-level and flow-level information in our model allows for more
+accurate and efficient classification, setting a new benchmark in network intrusion detection. Our results clearly indicate
+that by integrating both modalities within a single framework, we can achieve better detection rates and more actionable
+insights than existing approaches, solidifying our framework’s position as a cutting-edge solution in the field.
+4.2. Explainability Analysis
+To assess the explainability of our proposed system, we utilized the default hyperparameters of the Llama 3 model
+(AI@Meta, 2024) and applied Algorithm 3 to generate prompts that guide the LLM in producing the desired responses.
+This algorithm involves executing different queries tailored for flow-based and payload-specific attacks. Therefore, we
+present two sample responses generated by our proposed system, illustrating these two distinct cases.
+4.2.1. Flow-based Attacks’ Explanation
+In the first scenario, the predicted attack is a flow-based attack, specifically a DDoS attack. The attacker attempts to
+overwhelm network resources in a distributed manner within a specific timeframe. The Generative Explainer leveraged
+the top features identified by the previous component and provided a comprehensive response, as illustrated in Fig. 4.
+The initial part of the response highlights the predicted attack using descriptive feature names. It clearly shows how
+Y.A. Farrukh et al.: Preprint submitted to Elsevier
+Page 15 of 19
+
+
+===== PAGE 16 =====
+
+XG-NID: Dual-Modality Network Intrusion Detection using a HGNN and LLM
+Fig. 4. Illustration of the generative explanation for a flow-based DDoS. The response generated by the proposed system
+incorporates explainable features and a rolling window analysis, providing a more comprehensive and accurate reasoning
+for the detected attack.
+an increase in ICMP packets within the specific timeframe suggests that the attacker is attempting to overwhelm the
+targeted system. The second part outlines the potential mitigation steps that can be taken to address such attacks.
+To compare our generated explanations with previous work by Khediri et al. (2024), we replicated their
+methodology by utilizing Shapley values of the predicted outcomes and their instruction tuning template. The generated
+response, as shown in Fig. 5, demonstrates that relying solely on conventional flow attributes is insufficient to establish a
+clear relationship with the detected attack. This limitation arises because individual flow attributes, such as acceptable
+packet size ranges, can be misleading when considered in isolation. In contrast, DDoS attacks are more effectively
+explained by analyzing the average behavior of packets over a specific timeframe rather than focusing on single flow
+attributes. This comparison highlights that the inclusion of our explainable features and the rolling window concept
+provides more accurate reasoning for flow-based attacks, making the responses generated by our proposed system
+significantly more meaningful.
+4.2.2. Payload-based Attacks’ Explanation
+The second type of attack involves packet-level threats, where the actual maliciousness resides in the packet payload.
+Although these attacks may exhibit benign behavior in terms of network flow, their malicious intent becomes apparent
+through payload analysis. Previous researchers (Khediri et al., 2024; Ziems et al., 2023; Ali and Kostakos, 2023)
+have explained such attacks using only flow attributes, which is insufficient because flow data alone doesn’t reveal the
+inherent maliciousness in most payload attacks, such as SQL injection or malware distribution.
+To address this limitation, we introduced a second case in our Algorithm 3, specifically designed for payload-
+specific attacks. For these types of attacks, our approach generates two queries: one focused on analyzing the payload
+text to assess potential exploitation, and another based on flow attributes. This dual-query method enables our system
+to provide a more comprehensive explanation, as shown in Fig. 6. The first part of the response clearly indicates that
+the packet payload is malicious, containing a potential SQL injection query. This payload analysis effectively conveys
+the malicious nature of the predicted attack. The subsequent sections then provide flow-based explanations and suggest
+potential mitigation steps, ensuring a thorough understanding of the threat.
+Y.A. Farrukh et al.: Preprint submitted to Elsevier
+Page 16 of 19
+
+
+===== PAGE 17 =====
+
+XG-NID: Dual-Modality Network Intrusion Detection using a HGNN and LLM
+Fig. 5. Illustration of the generative explanation for a flow-based DDoS attack, highlighting the insufficiency of relying
+solely on conventional flow attributes.
+Fig. 6. Comprehensive explanation of a packet-level attack, demonstrating the malicious nature of the packet payload. The
+figure shows the dual-query approach, where the payload analysis identifies potential SQL injection, followed by flow-based
+explanations and suggested mitigation steps, ensuring a thorough understanding of the attack scenario.
+5. Conclusion
+This work presented "XG-NID," a novel framework that advances the state-of-the-art in ML-based NIDS by
+integrating flow-level and packet-level data into a heterogeneous graph structure. By leveraging a HGNN for graph-
+level classification, XG-NID provides real-time inference capabilities while capturing the complex relationships
+inherent in network traffic. The incorporation of LLMs adds a layer of explainability, enabling the generation of human-
+readable explanations and actionable insights, which are critical for effective cybersecurity defense mechanisms.
+Y.A. Farrukh et al.: Preprint submitted to Elsevier
+Page 17 of 19
+
+
+===== PAGE 18 =====
+
+XG-NID: Dual-Modality Network Intrusion Detection using a HGNN and LLM
+Furthermore, the introduction of new flow features based on temporal information enhances the contextual
+understanding and explainability of the model’s predictions. Our comprehensive evaluation demonstrates that XG-
+NID significantly outperforms existing baseline and state-of-the-art methods, achieving an impressive F1 score of
+97% in multi-class classification. This underscores the efficacy of our approach in addressing the challenges of real-
+time intrusion detection while providing a robust and adaptive defense mechanism. Ultimately, XG-NID sets a new
+benchmark in the field of NIDS by combining innovative data fusion techniques with enhanced interpretability and
+real-time operational capabilities, offering a promising direction for future research and practical implementations in
+cybersecurity.
+Future work will focus on extending XG-NID to multiple datasets to ensure its robustness across diverse network
+environments. Additionally, we aim to integrate it into an automated system capable of making autonomous decisions
+and providing rapid security responses, paving the way for intelligent, self-sustaining cybersecurity solutions
+Acknowledgments
+This work was supported in part by the U.S. Military Academy (USMA) under Cooperative Agreement No.
+W911NF-22-2-0081. The views and conclusions expressed in this paper are those of the authors and do not reflect the
+official policy or position of the U.S. Military Academy, U.S. Army, U.S. Department of Defense, or U.S. Government.
+CRediT authorship contribution statement
+Yasir Ali Farrukh: Methodology, Data Curation, Formal analysis, Experimentation, Writing - Original Draft.
+Syed Wali: Methodology, Writing - Original Draft, Visualization, Investigation, Formal analysis. Irfan Khan: Writing
+- Review & Editing, Supervision, Resources. Nathaniel D. Bastian: Conceptualization, Methodology, Writing -
+Review & Editing, Project Administration.
+References
+Abou El Houda, Z., Brik, B., Khoukhi, L., 2022. “why should i trust your ids?”: An explainable deep learning framework for intrusion detection
+systems in internet of things networks. IEEE Open Journal of the Communications Society 3, 1164–1176.
+AI@Meta, 2024. Llama 3 model card URL: https://github.com/meta-llama/llama3/blob/main/MODEL_CARD.md.
+Ali, T., Kostakos, P., 2023. Huntgpt: Integrating machine learning-based anomaly detection and explainable ai with large language models (llms).
+arXiv preprint arXiv:2309.16021 .
+Altaf, T., Wang, X., Ni, W., Liu, R.P., Braun, R., 2023. Ne-gconv: A lightweight node edge graph convolutional network for intrusion detection.
+Computers & Security 130, 103285.
+Alwahedi, F., Aldhaheri, A., Ferrag, M.A., Battah, A., Tihanyi, N., 2024. Machine learning techniques for iot security: Current research and future
+vision with generative ai and large language models. Internet of Things and Cyber-Physical Systems .
+Aouini, Z., Pekar, A., 2022. Nfstream: A flexible network data analysis framework. Computer Networks 204, 108719.
+Cao, Y., Jiang, H., Deng, Y., Wu, J., Zhou, P., Luo, W., 2021. Detecting and mitigating ddos attacks in sdn using spatial-temporal graph convolutional
+network. IEEE Transactions on Dependable and Secure Computing 19, 3855–3872.
+Chang, L., Branco, P., 2024. Embedding residuals in graph-based solutions: the e-ressage and e-resgat algorithms. a case study in intrusion detection.
+Applied Intelligence , 1–16.
+Cunningham, C., 2020. Cyber Warfare–Truth, Tactics, and Strategies: Strategic concepts and truths to help you and your organization survive on
+the battleground of cyber warfare. Packt Publishing Ltd.
+Farrukh, Y.A., Khan, I., Wali, S., Bierbrauer, D., Pavlik, J.A., Bastian, N.D., 2022. Payload-byte: A tool for extracting and labeling packet capture
+files of modern network intrusion detection datasets, in: 2022 IEEE/ACM International Conference on Big Data Computing, Applications and
+Technologies (BDCAT), IEEE. pp. 58–67.
+Farrukh, Y.A., Wali, S., Khan, I., Bastian, N.D., 2023. Senet-i: An approach for detecting network intrusions through serialized network traffic
+images. Engineering Applications of Artificial Intelligence 126, 107169.
+Farrukh, Y.A., Wali, S., Khan, I., Bastian, N.D., 2024a. Ais-nids: An intelligent and self-sustaining network intrusion detection system. Computers
+& Security 144, 103982.
+Farrukh, Y.A., Wali, S., Khan, I., Bastian, N.D., 2024b. Gnn4id. https://github.com/Yasir-ali-farrukh/GNN4ID.
+Gartner, Inc., 2021. Gartner predicts 30% of critical infrastructure organizations will experience a security breach by 2025. URL: https://www.
+gartner.com/en/newsroom/press-releases/2021-12-2-gartner-predicts-30--of-critical-infrastructure-organi.
+Goodman, E.L., Zimmerman, C., Hudson, C., 2020.
+Packet2vec: Utilizing word2vec for feature extraction in packet data.
+arXiv preprint
+arXiv:2004.14477 .
+Gueriani, A., Kheddar, H., Mazari, A.C., 2024. Enhancing iot security with cnn and lstm-based intrusion detection systems, in: 2024 6th International
+Conference on Pattern Analysis and Intelligent Systems (PAIS), IEEE. pp. 1–7.
+Hamilton, W., Ying, Z., Leskovec, J., 2017. Inductive representation learning on large graphs. Advances in neural information processing systems
+30.
+Y.A. Farrukh et al.: Preprint submitted to Elsevier
+Page 18 of 19
+
+
+===== PAGE 19 =====
+
+XG-NID: Dual-Modality Network Intrusion Detection using a HGNN and LLM
+Han, D., Wang, Z., Chen, W., Zhong, Y., Wang, S., Zhang, H., Yang, J., Shi, X., Yin, X., 2021. Deepaid: Interpreting and improving deep learning-
+based anomaly detection in security applications, in: Proceedings of the 2021 ACM SIGSAC Conference on Computer and Communications
+Security, pp. 3197–3217.
+Khan, M.A., Kim, J., 2020. Toward developing efficient conv-ae-based intrusion detection system using heterogeneous dataset. Electronics 9, 1771.
+Khediri, A., Slimi, H., Yahiaoui, A., Derdour, M., Bendjenna, H., Ghenai, C.E., 2024. Enhancing machine learning model interpretability in
+intrusion detection systems through shap explanations and llm-generated descriptions, in: 2024 6th International Conference on Pattern Analysis
+and Intelligent Systems (PAIS), IEEE. pp. 1–6.
+Kiflay, A., Tsokanos, A., Fazlali, M., Kirner, R., 2024. Network intrusion detection leveraging multimodal features. Array 22, 100349.
+Lo, W.W., Layeghy, S., Sarhan, M., Gallagher, M., Portmann, M., 2022. E-graphsage: A graph neural network based intrusion detection system for
+iot, in: NOMS 2022-2022 IEEE/IFIP Network Operations and Management Symposium, pp. 1–9. doi:10.1109/NOMS54207.2022.9789878.
+Mallick, M.A.I., Nath, R., 2024. Navigating the cyber security landscape: A comprehensive review of cyber-attacks, emerging trends, and recent
+developments. World Scientific News 190, 1–69.
+Messai, M.L., Seba, H., 2023. Iot network attack detection: Leveraging graph learning for enhanced security, in: Proceedings of the 18th International
+Conference on Availability, Reliability and Security, pp. 1–7.
+Min, E., Long, J., Liu, Q., Cui, J., Chen, W., 2018. Tr-ids: Anomaly-based intrusion detection through text-convolutional neural network and random
+forest. Security and Communication Networks 2018, 4943509.
+Moustafa, N., Koroniotis, N., Keshk, M., Zomaya, A.Y., Tari, Z., 2023. Explainable intrusion detection for cyber defences in the internet of things:
+Opportunities and solutions. IEEE Communications Surveys & Tutorials 25, 1775–1807.
+Mwangi, P., 2024. Cybersecurity threats and national security in the digital age. American Journal of International Relations 9, 26–35.
+Nadeem, A., Vos, D., Cao, C., Pajola, L., Dieck, S., Baumgartner, R., Verwer, S., 2023. Sok: Explainable machine learning for computer security
+applications, in: 2023 IEEE 8th European Symposium on Security and Privacy (EuroS&P), IEEE. pp. 221–240.
+Narayan, K.R., Mookherji, S., Odelu, V., Prasath, R., Turlapaty, A.C., Das, A.K., 2023. Iids: Design of intelligent intrusion detection system for
+internet-of-things applications, in: 2023 IEEE 7th Conference on Information and Communication Technology (CICT), IEEE. pp. 1–6.
+Neto, E.C.P., Dadkhah, S., Ferreira, R., Zohourian, A., Lu, R., Ghorbani, A.A., 2023. Ciciot2023: A real-time dataset and benchmark for large-scale
+attacks in iot environment. Sensors 23, 5941.
+Pratomo, B.A., Burnap, P., Theodorakopoulos, G., 2018. Unsupervised approach for detecting low rate attacks on network traffic with autoencoder,
+in: 2018 international conference on cyber security and protection of digital services (Cyber Security), IEEE. pp. 1–8.
+Premkumar, A., Schneider, M., Spivey, C., Pavlik, J., Bastian, N.D., 2023. Graph representation learning for context-aware network intrusion
+detection, in: Artificial Intelligence and Machine Learning for Multi-Domain Operations Applications V, SPIE. pp. 82–92.
+Pujol-Perich, D., Suárez-Varela, J., Cabellos-Aparicio, A., Barlet-Ros, P., 2022. Unveiling the potential of graph neural networks for robust intrusion
+detection. ACM SIGMETRICS Performance Evaluation Review 49, 111–117.
+Specht, S.M., Lee, R.B., 2004. Distributed denial of service: Taxonomies of attacks, tools, and countermeasures., in: PDCS, pp. 543–550.
+Sundararajan, M., Taly, A., Yan, Q., 2017. Axiomatic attribution for deep networks, in: International conference on machine learning, PMLR. pp.
+3319–3328.
+Tan, Z., Jamdagni, A., He, X., Nanda, P., Liu, R.P., Hu, J., 2014. Detection of denial-of-service attacks based on computer vision techniques. IEEE
+transactions on computers 64, 2519–2533.
+Umer, M.F., Sher, M., Bi, Y., 2017. Flow-based intrusion detection: Techniques and challenges. Computers & Security 70, 238–254.
+Velickovic, P., Cucurull, G., Casanova, A., Romero, A., Lio, P., Bengio, Y., et al., 2017. Graph attention networks. stat 1050, 10–48550.
+Vidal, J.M., Monge, M.A.S., Monterrubio, S.M.M., 2020. Espada: Enhanced payload analyzer for malware detection robust against adversarial
+threats. Future Generation Computer Systems 104, 159–173.
+Yu, B., Yin, H., Zhu, Z., 2017. Spatio-temporal graph convolutional networks: A deep learning framework for traffic forecasting. arXiv preprint
+arXiv:1709.04875 .
+Zhang, B., Li, J., Chen, C., Lee, K., Lee, I., 2022. A practical botnet traffic detection system using gnn, in: Cyberspace Safety and Security: 13th
+International Symposium, CSS 2021, Virtual Event, November 9–11, 2021, Proceedings 13, Springer. pp. 66–78.
+Zhou, J., Xu, Z., Rush, A.M., Yu, M., 2020. Automating botnet detection with graph neural networks. arXiv preprint arXiv:2003.06344 .
+Ziems, N., Liu, G., Flanagan, J., Jiang, M., 2023. Explaining tree model decisions in natural language for network intrusion detection. arXiv preprint
+arXiv:2310.19658 .
+Y.A. Farrukh et al.: Preprint submitted to Elsevier
+Page 19 of 19
