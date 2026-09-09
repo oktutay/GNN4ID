@@ -37,12 +37,27 @@ def additional_features(file_name,
                         vulnerable_ports=None,
                         dns_ports=None,
                         exp_id=(0, -1),
-                        proto_list=(1, 2, 6, 17, 58)):
+                        proto_list=(1, 2, 6, 17, 58),
+                        out_file=None):
     """
     Reads the NFStream-extracted CSV at ``file_name``, computes the 16 temporal
     rolling-window features described in paper Table 1, one-hot encodes the
-    `expiration_id` and `protocol` categorical columns, and overwrites the file
-    in place.
+    `expiration_id` and `protocol` categorical columns, and writes the result.
+
+    LEAKAGE WARNING -- ORDER MATTERS. These features are rolling windows over
+    time-sorted flows, so they MUST be computed AFTER the train/test split, once
+    per split, never on the combined pre-split file. Computing them on the whole
+    file (the original notebook order) makes a test flow's rolling features
+    depend on neighbouring train flows -> train/test coupling / leakage.
+
+    Correct order:  split_csv()  ->  additional_features(train) ;
+                                     additional_features(test)
+
+    Args:
+        out_file (str, optional): If given, write the augmented data here instead
+            of overwriting ``file_name`` in place. Use this so the raw split file
+            is preserved and the operation stays reversible. Defaults to None
+            (in-place overwrite, original behaviour).
 
     The function is idempotent on the schema as long as the original NFStream
     columns are still present; all helper boolean columns are dropped before the
@@ -172,4 +187,4 @@ def additional_features(file_name,
     # Drop helper boolean / id columns -- they must NOT leak into flow node features.
     data.drop(columns=helper_cols, errors='ignore', inplace=True)
 
-    data.to_csv(file_name, index=False)
+    data.to_csv(out_file or file_name, index=False)

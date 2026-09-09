@@ -1,5 +1,5 @@
-import seaborn as sns
 import torch
+import torch.nn.functional as F
 from tqdm import tqdm
 
 from sklearn.metrics import confusion_matrix, f1_score, accuracy_score, precision_score, recall_score, roc_auc_score
@@ -10,7 +10,16 @@ import numpy as np
 # Default training/eval path: model takes edge attributes (paper Section 3.1.4).
 # ---------------------------------------------------------------------------
 
-def train(train_loader, model, args, device="cuda"):
+def _weighted_loss(model, pred, label, class_weight):
+    """Use a class-weighted NLL loss when class_weight is given, else the
+    model's own (unweighted) loss. class_weight replaces the original naive
+    duplicate-oversampling for handling class imbalance (see report)."""
+    if class_weight is None:
+        return model.loss(pred, label)
+    return F.nll_loss(pred, label, weight=class_weight)
+
+
+def train(train_loader, model, args, device="cuda", class_weight=None):
     """
     Trains the model using the provided DataLoader. The model is expected to
     accept (x_dict, edge_index_dict, edge_attr_dict, batch).
@@ -20,7 +29,11 @@ def train(train_loader, model, args, device="cuda"):
         train_loader (DataLoader): DataLoader for the training data.
         args (dict): Dictionary containing training arguments like learning rate and epochs.
         device (str): The device to run the training on (default is "cuda").
+        class_weight (torch.Tensor, optional): Per-class weights for the loss.
+            Pass this instead of oversampling the minority classes.
     """
+    if class_weight is not None:
+        class_weight = class_weight.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=args['lr'])
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, mode='max', factor=0.5, patience=5, threshold=0.01, min_lr=0.00001
@@ -34,7 +47,7 @@ def train(train_loader, model, args, device="cuda"):
             optimizer.zero_grad()
             pred = model(batch.x_dict, batch.edge_index_dict, batch.edge_attr_dict, batch)
             label = batch.y
-            loss = model.loss(pred, label)
+            loss = _weighted_loss(model, pred, label, class_weight)
             loss.backward()
             optimizer.step()
             total_loss += loss.item() * batch.num_graphs
@@ -99,9 +112,9 @@ def calculate_metrics(y_pred, y_true):
 # functions above; the ablation path (no edge attr) is offered separately.
 # ---------------------------------------------------------------------------
 
-def train_with_edge_Att(train_loader, model, args, device="cuda"):
+def train_with_edge_Att(train_loader, model, args, device="cuda", class_weight=None):
     """Alias kept for backward-compat. Identical to train()."""
-    return train(train_loader, model, args, device=device)
+    return train(train_loader, model, args, device=device, class_weight=class_weight)
 
 
 def test_edge(loader, model, device='cuda'):

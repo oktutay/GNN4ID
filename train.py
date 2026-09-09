@@ -59,7 +59,22 @@ def parse_args():
     p.add_argument("--save-path", default="checkpoints/xgnid_hgnn.pth")
     p.add_argument("--eval-only", action="store_true",
                    help="Skip training; load --save-path and run test_cm_with_edge_att.")
+    p.add_argument("--class-weights", default=None,
+                   help="Path to class_weights.json (produced by clean_existing_data.py). "
+                        "Pass this instead of oversampling the minority classes; the loss "
+                        "becomes class-weighted NLL.")
     return p.parse_args()
+
+
+def load_class_weights(path, num_classes=8):
+    """Read {class_id: weight} JSON into a dense [num_classes] float tensor."""
+    import json
+    with open(path) as f:
+        raw = json.load(f)
+    w = [1.0] * num_classes
+    for k, v in raw.items():
+        w[int(k)] = float(v)
+    return torch.tensor(w, dtype=torch.float32)
 
 
 def set_seed(s):
@@ -137,9 +152,14 @@ def main():
             model(init_batch.x_dict, init_batch.edge_index_dict, init_batch)
     print(f"[model] {model.__class__.__name__} params={sum(p.numel() for p in model.parameters()):,}")
 
+    class_weight = None
+    if args.class_weights:
+        class_weight = load_class_weights(args.class_weights)
+        print(f"[data] using class weights: {class_weight.tolist()}")
+
     if not args.eval_only:
         train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True)
-        train_fn(train_loader, model, model_args, device)
+        train_fn(train_loader, model, model_args, device, class_weight=class_weight)
         os.makedirs(os.path.dirname(args.save_path) or ".", exist_ok=True)
         torch.save(model, args.save_path)
         print(f"[save] {args.save_path}")

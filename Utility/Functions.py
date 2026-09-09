@@ -376,7 +376,8 @@ def rename_files(directory, name_mapping):
         return
 
     # List all files in the directory
-    directory = directory+"\**\*pcap"
+    # os.path.join instead of hardcoded "\\": these helpers were authored on Windows.
+    directory = os.path.join(directory, "**", "*pcap")
     files = glob.glob(directory)
 
     # Iterate over each file
@@ -384,14 +385,14 @@ def rename_files(directory, name_mapping):
         # Check if the file is a regular file
         if os.path.isfile(filename):
             # Getting the Name of the Attack type
-            old_name_search = filename.split('\\')[-1]
+            old_name_search = os.path.basename(filename)
             old_name_search = old_name_search.split('.')[-2]
             old_name_search = re.sub(r'\d+', '', old_name_search)
             old_name_search = old_name_search[:-1] if old_name_search.endswith("_") else old_name_search
             # Mapping the name as per the provided dictionary
             new_name = name_mapping.get(old_name_search, old_name_search)
             # Combining new name with the directory for renaming 
-            new_name = os.path.dirname(filename)+"\\"+new_name
+            new_name = os.path.join(os.path.dirname(filename), new_name)
             # Extracting the file number from the name
         try:
             number = extract_number(os.path.basename(filename))
@@ -419,6 +420,13 @@ def extract_number(file_name: str) -> str:
 
 def duplicate_rows(df, target_rows):
     """
+    DEPRECATED -- naive verbatim-row oversampling. Kept only for backward
+    compatibility with the original notebook. Do NOT use: it copies rows
+    verbatim (no augmentation), inflates minority classes to mostly exact
+    duplicates, overfits, and produces misleading "balanced" counts. Handle
+    imbalance with class weights at training time instead
+    (clean_existing_data.py -> class_weights.json -> train.py --class-weights).
+
     Duplicates the rows of a DataFrame to reach the target number of rows.
 
     Args:
@@ -490,22 +498,28 @@ def Combining_classes(directory, classes_list, Number_in_individaul_class=20000,
         # Load each file and append the dataframe to the list
         for file in List_of_CSV_File:
             df = pd.read_csv(file)
-            name_file = file.split('\\')[-1]
+            name_file = os.path.basename(file)
             name_file = name_file.split('.')[-2]
             name_file = name_file.split('-')[0]
             df_list.append(df)
         
         final_df = pd.concat(df_list, ignore_index=True)
         
-        if final_df.shape[0]<=Number_in_individaul_class:
-            final_df = duplicate_rows(final_df,Number_in_individaul_class)
-        else:
-            fraction = Number_in_individaul_class/final_df.shape[0]
-            final_df = final_df.sample(frac=fraction)    
-        
+        # Class imbalance is handled by class weights at training time
+        # (train.py --class-weights), NOT by naive row duplication. The old
+        # `duplicate_rows` path inflated minority classes to up to ~91% exact
+        # duplicates, producing misleading "balanced" 20k/class counts and
+        # overfitting. Here we only DEDUP and CAP the majority classes; minority
+        # classes keep their true unique flows.
+        final_df = final_df.drop_duplicates().reset_index(drop=True)
+        if final_df.shape[0] > Number_in_individaul_class:
+            final_df = final_df.sample(n=Number_in_individaul_class, random_state=42)
+        print(f"[Combining_classes] {name_file}: {final_df.shape[0]} unique train flows")
+
         final_df['Label'] = label_dict[name_file]
         # Directory for saving
-        train_file_path = os.path.dirname(file)+'\\train\\'+name_file+'_train.csv'
+        # os.path.join instead of hardcoded '\\' so the path also resolves on Linux.
+        train_file_path = os.path.join(os.path.dirname(file), 'train', name_file+'_train.csv')
         # Creating the Directory
         if not os.path.exists(os.path.dirname(train_file_path)): 
             os.makedirs(os.path.dirname(train_file_path))
@@ -513,11 +527,11 @@ def Combining_classes(directory, classes_list, Number_in_individaul_class=20000,
         final_df.to_csv(train_file_path, index=False)
 
         ## For Test Data
-        List_of_CSV_File =glob.glob(directory+"test\\"+each_class+"*")
+        List_of_CSV_File =glob.glob(os.path.join(directory, "test", each_class+"*"))
         df_list = []
         for file in List_of_CSV_File:
             df = pd.read_csv(file)
-            name_file = file.split('\\')[-1]
+            name_file = os.path.basename(file)
             name_file = name_file.split('.')[-2]
             name_file = name_file.split('-')[0]
             df_list.append(df)
@@ -527,28 +541,47 @@ def Combining_classes(directory, classes_list, Number_in_individaul_class=20000,
         final_df['Label'] = label_dict[name_file]
         if final_df.shape[0]>Number_of_test_samples:
             final_df = final_df.sample(n = Number_of_test_samples, random_state=42)
-        test_file_path = os.path.dirname(file)+'\\'+name_file+'_test.csv'
+        test_file_path = os.path.join(os.path.dirname(file), name_file+'_test.csv')
         final_df.to_csv(test_file_path, index=False)
 
-def split_csv(file_path, test_sample = 4000 , Number_in_individaul_class=20000):
+def split_csv(file_path, test_sample=4000, Number_in_individaul_class=20000,
+              temporal=True, dedup=True):
     """
     Splits a CSV file into training and test datasets based on specific criteria for benign and attack traffic.
 
+    IMPORTANT (fixed pipeline): run this on the *raw* NFStream CSV, i.e. BEFORE
+    `additional_features()`. The rolling-window features must be computed
+    per-split (see Additional_Features.additional_features), otherwise a test
+    flow's rolling features are derived from neighbouring train flows -> leak.
+
+    Two leakage fixes vs. the original implementation:
+      * dedup=True  -- drop byte-identical duplicate flows *before* splitting, so
+                       the same flow can never land in both train and test
+                       (the original random split over a duplicate-heavy dataset
+                       put ~13% of test rows byte-identical to a train row).
+      * temporal=True -- split by time (earliest 80% -> train pool, latest 20%
+                       -> test pool) instead of a random row split, so train and
+                       test do not share temporally-correlated sibling flows.
+                       Requires the 'bidirectional_first_seen_ms' column. Falls
+                       back to a random split if it is absent.
+
     Args:
         file_path (str): The path to the CSV file.
-        test_sample (int): Number of test samples to extract.
-        Number_in_individual_class (int): Number of training samples per class.
+        test_sample (int): Max number of test samples to extract.
+        Number_in_individaul_class (int): Max number of training samples.
+        temporal (bool): Use a time-ordered split instead of a random one.
+        dedup (bool): Drop exact-duplicate flows before splitting.
 
     Returns:
         None: The function saves the training and test datasets as CSV files.
     """
     # Load the CSV file
     df = pd.read_csv(file_path)
-    name_file = file_path.split('\\')[-1]
+    name_file = os.path.basename(file_path)
     name_file = name_file.split('.')[-2]
     # Name for filtering the Mac-addresses
     name_check = name_file.split('-')[0]
-    
+
     # Attacker MAC addresses, paper Table 3.
     attacker_macs = {
         'dc:a6:32:dc:27:d5', 'e4:5f:01:55:90:c4', 'dc:a6:32:c9:e4:ab',
@@ -564,19 +597,40 @@ def split_csv(file_path, test_sample = 4000 , Number_in_individaul_class=20000):
     else:
         # Attack flows must have an attacker as either src or dst.
         df = df[src_is_attacker | dst_is_attacker]
-    
-    if df.shape[0] > 35000:
-        df_test = df.sample(n = test_sample, random_state=42)
-        df = df.drop(df_test.index)
-        df = df.sample(n = Number_in_individaul_class, random_state=42)
+
+    # ---- Leakage fix 1: remove exact-duplicate flows before splitting -------
+    if dedup:
+        before = df.shape[0]
+        df = df.drop_duplicates().reset_index(drop=True)
+        if before != df.shape[0]:
+            print(f"[split_csv] {name_file}: dropped {before - df.shape[0]} "
+                  f"duplicate flows ({df.shape[0]} unique remain)")
+
+    # ---- Leakage fix 2: time-ordered split (test = strictly later flows) ----
+    use_temporal = temporal and 'bidirectional_first_seen_ms' in df.columns
+    if use_temporal:
+        df = df.sort_values('bidirectional_first_seen_ms').reset_index(drop=True)
+        n_test = min(test_sample, int(round(df.shape[0] * 0.2)))
+        df_test = df.iloc[df.shape[0] - n_test:]          # latest flows -> test
+        df = df.iloc[:df.shape[0] - n_test]               # earliest flows -> train
+        if df.shape[0] > Number_in_individaul_class:
+            # undersample the (earlier) train pool; keep it time-spread by sampling
+            df = df.sample(n=Number_in_individaul_class, random_state=42)
     else:
-        df_test = df.sample(frac=0.2, random_state=42)
-        df = df.drop(df_test.index)
-        
-    test_file_path = os.path.dirname(file_path)+'\\test\\'+name_file+'_test.csv'
-    
+        # Fallback: random split (kept for CSVs without a timestamp column).
+        if df.shape[0] > 35000:
+            df_test = df.sample(n=test_sample, random_state=42)
+            df = df.drop(df_test.index)
+            df = df.sample(n=Number_in_individaul_class, random_state=42)
+        else:
+            df_test = df.sample(frac=0.2, random_state=42)
+            df = df.drop(df_test.index)
+
+    # os.path.join instead of hardcoded '\\' so the path also resolves on Linux.
+    test_file_path = os.path.join(os.path.dirname(file_path), 'test', name_file+'_test.csv')
+
     if not os.path.exists(os.path.dirname(test_file_path)): # Creating the Directory
         os.makedirs(os.path.dirname(test_file_path))
-        
+
     df_test.to_csv(test_file_path, index=False)
     df.to_csv(file_path, index=False)

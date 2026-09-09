@@ -19,8 +19,17 @@ LABEL_DICT = {
 def main():
     root = sys.argv[1] if len(sys.argv) > 1 else \
         "/home/tutay/Tutay/Tutay_Sec/XG_NID/data/CIC_IoT2023_Processed_Data"
-    train_csv = os.path.join(root, "df_class_8_train.csv")
-    test_csv = os.path.join(root, "df_class_8_test.csv")
+    # Prefer the de-leaked / de-duplicated CSVs produced by clean_existing_data.py
+    # when they exist; fall back to the original (leaky) combined CSVs otherwise.
+    train_clean = os.path.join(root, "df_class_8_train_clean.csv")
+    test_clean = os.path.join(root, "df_class_8_test_clean.csv")
+    if os.path.exists(train_clean) and os.path.exists(test_clean):
+        train_csv, test_csv = train_clean, test_clean
+        print("[build] using CLEAN (de-leaked) CSVs")
+    else:
+        train_csv = os.path.join(root, "df_class_8_train.csv")
+        test_csv = os.path.join(root, "df_class_8_test.csv")
+        print("[build] WARNING: using original (leaky) CSVs; run clean_existing_data.py first")
 
     print(f"[build] root={root}")
     print(f"[build] processing TRAIN ({train_csv})")
