@@ -12,12 +12,14 @@ you can either
 The six stages mirror GNN4ID.ipynb + Data_preprocessing_CIC-IoT2023.ipynb:
 
   1 extract   PCAP  -> raw CSV        NFStreamer + My_Custom (on_init / on_update)
-  2 split     raw CSV -> train/test   Utility.Functions.split_csv       (MAC filter,
-                                      dedup, temporal 80/20)
-  3 features  per split, in place     Utility.Additional_Features.additional_features
-                                      (16 rolling features + one-hot)
-  4 combine   per class -> 1 file     Utility.Functions.Combining_classes + the
-                                      notebook's concat / drop-biased-columns cells
+  2 features  raw -> features/<stem>  Utility.Additional_Features.additional_features
+                                      (28 rolling columns of the authors, computed on
+                                      the WHOLE time-ordered file, before any split)
+  3 split     features -> split/      Utility.Functions.split_csv       (MAC filter,
+                                      temporal 80/20, per-file caps, feature dedup)
+  4 combine   per class -> 1 file     Utility.Functions.Combining_classes (dedup,
+                                      proportional caps, train-only oversample) +
+                                      Utility.Functions.build_class8_csvs (29-col drop)
   5 graphs    CSV -> HeteroData .pt   Utility.Functions.NIDSDataset.process
   6 model     .pt -> train/eval       Utility.Model.HeteroGNN_Edge +
                                       Utility.Training.train / test_cm
@@ -56,46 +58,8 @@ from Debug.tracer import CallTracer, Tee, summarize  # noqa: E402
 
 DEFAULT_PCAP_DIR = os.path.join(REPO, "data", "Debug and Trace")
 
-# GNN4ID.ipynb, cell "name_mapping": pcap base name -> "<BroadClass>-<SubClass>".
-# split_csv()/Combining_classes() read the broad class from the part before '-'.
-NAME_MAPPING = {
-    'Benign': 'Benign-Benign',
-    'DDoS-ACK_Fragmentation': 'DDos-AckFrg', 'DDoS-UDP_Flood': 'DDos-UDPFlood',
-    'DDos-SlowLoris': 'DDos-SlowLoris', 'DDoS-ICMP_Flood': 'DDos-ICMPFlood',
-    'DDoS-RSTFINFlood': 'DDos-RSTFIN', 'DDoS-PSHACK_Flood': 'DDos-PSHACK',
-    'DDoS-HTTP_Flood': 'DDos-HTTPFlood', 'DDoS-UDP_Fragmentation': 'DDos-UDPFrg',
-    'DDoS-ICMP_Fragmentation': 'DDos-ICMPFrg', 'DDoS-TCP_Flood': 'DDos-TCPFlood',
-    'DDoS-SYN_Flood': 'DDos-SYNFlood', 'DDoS-SynonymousIP_Flood': 'DDos-SynonymousIPFlood',
-    'DoS-TCP_Flood': 'Dos-TCPFlood', 'DoS-HTTP_Flood': 'Dos-HTTPFlood',
-    'DoS-SYN_Flood': 'Dos-SYNFlood', 'DoS-UDP_Flood': 'Dos-UDPFlood',
-    'Recon-PingSweep': 'Recon-PingSweep', 'Recon-OSScan': 'Recon-OSScan',
-    'VulnerabilityScan': 'Recon-VulScan', 'Recon-PortScan': 'Recon-PortScan',
-    'Recon-HostDiscovery': 'Recon-HostDisc', 'SqlInjection': 'WebBased-SqlInject',
-    'CommandInjection': 'WebBased-CmmdInject', 'Backdoor_Malware': 'WebBased-BckdoorMalware',
-    'Uploading_Attack': 'WebBased-UploadAttack', 'XSS': 'WebBased-XSS',
-    'BrowserHijacking': 'Webbased-BrwserHijack', 'DictionaryBruteForce': 'BruteForce-Dictionary',
-    'MITM-ArpSpoofing': 'Spoofing-ARP', 'DNS_Spoofing': 'Spoofing-DNS',
-    'Mirai-greip_flood': 'Mirai-GREIP', 'Mirai-greeth_flood': 'Mirai-Greeth',
-    'Mirai-udpplain': 'Mirai-UDPPlain',
-}
-
-LABEL_DICT = {'Benign': 0, 'WebBased': 1, 'Spoofing': 2, 'Recon': 3,
-              'Mirai': 4, 'Dos': 5, 'DDos': 6, 'BruteForce': 7}
-
-# Data_preprocessing_CIC-IoT2023.ipynb, cells 12/14: identifiers + columns that
-# leak the label or duplicate other features. Everything left must be numeric,
-# because NIDSDataset feeds the whole row to np.asarray(dtype=float).
-DROP_COLUMNS = [
-    'src_ip', 'src_port', 'dst_ip', 'dst_port', 'ip_version',
-    'bidirectional_bytes', 'bidirectional_first_seen_ms', 'bidirectional_last_seen_ms',
-    'bidirectional_duration_ms', 'bidirectional_packets',
-    'src2dst_first_seen_ms', 'src2dst_last_seen_ms',
-    'dst2src_first_seen_ms', 'dst2src_last_seen_ms',
-    'id', 'src_mac', 'src_oui', 'dst_mac', 'dst_oui', 'vlan_id', 'tunnel_id',
-    'bidirectional_syn_packets', 'bidirectional_cwr_packets', 'bidirectional_ece_packets',
-    'bidirectional_urg_packets', 'bidirectional_ack_packets', 'bidirectional_psh_packets',
-    'bidirectional_rst_packets', 'bidirectional_fin_packets',
-]
+from Utility.Schema import DEFAULT_LABELS as LABEL_DICT, IDENTIFIER_DROP_29 as DROP_COLUMNS  # noqa: E402
+from Utility.Functions import canonical_stem  # noqa: E402
 
 _T0 = time.time()
 _TRACER = None          # set in main(); step() annotates the trace log through it
@@ -145,8 +109,13 @@ class Paths:
     def __init__(self, out_dir):
         self.work = out_dir
         self.raw = os.path.join(out_dir, "raw")          # NIDSDataset's raw_dir too
-        self.raw_test = os.path.join(self.raw, "test")
-        self.raw_train = os.path.join(self.raw, "train")
+        self.features = os.path.join(out_dir, "features")
+        self.split = os.path.join(out_dir, "split")
+        self.split_train = os.path.join(self.split, "train")
+        self.split_test = os.path.join(self.split, "test")
+        self.combined = os.path.join(out_dir, "combined")
+        self.raw_train = os.path.join(self.combined, "train")   # legacy names kept
+        self.raw_test = os.path.join(self.combined, "test")
         self.processed = os.path.join(out_dir, "processed")
         self.logs = os.path.join(out_dir, "logs")
         self.train_csv = os.path.join(out_dir, "df_class_8_train.csv")
@@ -183,13 +152,8 @@ def state_mark(p, stage, done=True):
 
 
 def guard(cfg, p, stage, why):
-    """Stages 2 and 3 rewrite their input in place, so running them twice on the
-    same working dir corrupts it. Refuse unless asked twice."""
-    if state_done(p, stage) and not cfg.force:
-        log("stage '%s' already ran in this working dir (see .trace_state.json)." % stage)
-        log(why)
-        log("use --force to run it anyway, or --reset to start again from the pcaps.")
-        return True
+    """Kept for compatibility: no stage writes in place any more (features ->
+    features/, split -> split/, combine -> combined/), so nothing is guarded."""
     return False
 
 
@@ -264,20 +228,19 @@ def stage_extract(cfg, p):
         sys.exit("no pcap in %s" % cfg.pcap_dir)
 
     for pcap in pcaps:
-        base = os.path.basename(pcap).rsplit(".", 1)[0]
-        mapped = NAME_MAPPING.get(base, base)
+        mapped = canonical_stem(pcap)          # e.g. XSS.pcap -> WebBased-XSS_0
         out_csv = os.path.join(p.raw, mapped + ".csv")
         substep("%s  ->  %s.csv   (class = %s)"
                 % (os.path.basename(pcap), mapped, mapped.split("-")[0]))
-        log("rename_files() in Utility/Functions.py does this renaming on disk;")
-        log("here we only apply the same NAME_MAPPING to the output csv name.")
+        log("rename_files() in Utility/Functions.py does this renaming on disk via the")
+        log("case-insensitive CIC-IoT2023 resolver; here only the csv name is mapped.")
 
         if os.path.exists(out_csv) and not cfg.force:
             log("exists, skipping (use --force / --reset to redo): %s" % out_csv)
             continue
 
         streamer = NFStreamer(source=pcap, accounting_mode=1, idle_timeout=120,
-                             statistical_analysis=True, n_dissections=0,
+                             statistical_analysis=True, n_dissections=cfg.n_dissections,
                              bpf_filter=cfg.bpf or None,
                              udps=My_Custom(limit=cfg.packet_limit))
         t0 = time.time()
@@ -300,8 +263,6 @@ def stage_extract(cfg, p):
         df.to_csv(out_csv, index=False)
         log("%d flows, %d columns in %.1fs -> %s"
             % (df.shape[0], df.shape[1], time.time() - t0, out_csv))
-        state_mark(p, "split", False)      # fresh raw csv -> split/features may run again
-        state_mark(p, "features", False)
         if df.shape[0]:
             f0 = df.iloc[0]
             log("flow[0]: %s:%s -> %s:%s proto=%s packets=%s"
@@ -313,133 +274,99 @@ def stage_extract(cfg, p):
 
 
 # ---------------------------------------------------------------------------
-# stage 2: split_csv
+# stage 2: additional_features  (raw -> features/, whole file, BEFORE the split)
 # ---------------------------------------------------------------------------
-def stage_split(cfg, p):
-    step("STAGE 2/6  split: attacker-MAC filter + dedup + temporal 80/20  (split_csv)")
-    from Utility.Functions import split_csv
-    where(split_csv)
-    log("split_csv OVERWRITES its input with the train part and writes the test")
-    log("part to raw/test/<name>_test.csv. It must run on the RAW csv, before")
-    log("additional_features(), or the rolling features leak across the split.")
-
-    if guard(cfg, p, "split", "re-running it would split an already-split (and already "
-                              "enriched) train file."):
-        return
+def stage_features(cfg, p):
+    step("STAGE 2/6  features: 28 rolling columns on the whole time-ordered file  (additional_features)")
+    import pandas as pd
+    from Utility.Additional_Features import additional_features
+    where(additional_features)
+    log("computed ONCE per raw pcap csv, on every flow, sorted by bidirectional_first_seen_ms;")
+    log("label-free and backward-looking, so a later temporal split cannot leak (see the")
+    log("module docstring). window=%s %s, count_mode=%s, schema=%s"
+        % (cfg.window, cfg.window_unit, cfg.count_mode, cfg.schema))
 
     csvs = sorted(glob.glob(os.path.join(p.raw, "*.csv")))
     if not csvs:
         sys.exit("no csv in %s - run --stage extract first" % p.raw)
-
-    for csv_path in csvs:
-        name = os.path.basename(csv_path).rsplit(".", 1)[0]
-        test_out = os.path.join(p.raw_test, name + "_test.csv")
-        substep("split_csv(%s)" % os.path.basename(csv_path))
-        if os.path.exists(test_out) and not cfg.force:
-            log("already split (%s exists); skipping so the train part is not" % os.path.basename(test_out))
-            log("split a second time. Re-run with --reset to start clean.")
+    os.makedirs(p.features, exist_ok=True)
+    for f in csvs:
+        stem = os.path.basename(f).rsplit(".", 1)[0]
+        out = os.path.join(p.features, stem + ".csv")
+        substep("additional_features(%s) -> features/%s" % (os.path.basename(f), os.path.basename(out)))
+        if os.path.exists(out) and not cfg.force:
+            log("exists, skipping (use --force / --reset): %s" % out)
             continue
-        log("before: shape=%s" % (rows(csv_path),))
-        split_csv(csv_path, test_sample=cfg.test_sample,
-                  Number_in_individaul_class=cfg.train_cap)
-        log("after : train part %s -> shape=%s" % (os.path.basename(csv_path), rows(csv_path)))
-        log("        test  part %s -> shape=%s" % (os.path.relpath(test_out, p.raw), rows(test_out)))
-    state_mark(p, "split")
-
-
-# ---------------------------------------------------------------------------
-# stage 3: additional_features
-# ---------------------------------------------------------------------------
-def stage_features(cfg, p):
-    step("STAGE 3/6  features: 16 rolling temporal features per split  (additional_features)")
-    import pandas as pd
-    from Utility.Additional_Features import additional_features
-    where(additional_features)
-    log("run once per split (train and test separately) - paper Table 1 / Algorithm 1")
-
-    if guard(cfg, p, "features", "it is not idempotent: the second pass fails because "
-                                 "get_dummies already consumed protocol/expiration_id."):
-        return
-
-    targets = sorted(glob.glob(os.path.join(p.raw, "*.csv"))) + \
-        sorted(glob.glob(os.path.join(p.raw_test, "*_test.csv")))
-    if not targets:
-        sys.exit("nothing to enrich - run --stage extract/split first")
-
-    for f in targets:
-        substep("additional_features(%s)" % os.path.relpath(f, p.raw))
-        before = pd.read_csv(f, low_memory=False)
-        if 'Rolling_UDP_Sum' in before.columns and not cfg.force:
-            log("already enriched (Rolling_UDP_Sum present); skipping - it is not")
-            log("idempotent, the second run would fail on the one-hot columns.")
-            continue
-        additional_features(f, window_size=cfg.window_size)
-        after = pd.read_csv(f, low_memory=False)
+        before = pd.read_csv(f, nrows=1, low_memory=False)
+        additional_features(f, window=cfg.window, window_unit=cfg.window_unit,
+                            count_mode=cfg.count_mode, schema=cfg.schema, out_file=out,
+                            force=cfg.force)
+        after = pd.read_csv(out, nrows=1, low_memory=False)
         added = [c for c in after.columns if c not in before.columns]
         removed = [c for c in before.columns if c not in after.columns]
-        log("shape %s -> %s" % (before.shape, after.shape))
+        log("cols %d -> %d" % (before.shape[1], after.shape[1]))
         log("added  (%d): %s" % (len(added), added))
-        log("removed(%d): %s   (consumed by get_dummies / helper cols)" % (len(removed), removed))
-    state_mark(p, "features")
+        log("removed(%d): %s   (consumed by get_dummies)" % (len(removed), removed))
 
 
 # ---------------------------------------------------------------------------
-# stage 4: Combining_classes + the notebook's final concat / drop cells
+# stage 3: split_csv  (features/ -> split/{train,test}/)
+# ---------------------------------------------------------------------------
+def stage_split(cfg, p):
+    step("STAGE 3/6  split: attacker-MAC filter + temporal 80/20 + per-file caps  (split_csv)")
+    from Utility.Functions import split_csv
+    where(split_csv)
+    log("reads features/<stem>.csv, writes split/train/<stem>_train.csv and")
+    log("split/test/<stem>_test.csv; nothing is overwritten. test = latest 20%% (cap %d),"
+        % cfg.test_sample)
+    log("train = earlier 80%% -> feature-level dedup -> cap %d per file" % cfg.train_cap)
+
+    csvs = sorted(glob.glob(os.path.join(p.features, "*.csv")))
+    if not csvs:
+        sys.exit("no csv in %s - run --stage features first" % p.features)
+    for csv_path in csvs:
+        stem = os.path.basename(csv_path).rsplit(".", 1)[0]
+        test_out = os.path.join(p.split_test, stem + "_test.csv")
+        substep("split_csv(%s)" % os.path.basename(csv_path))
+        if os.path.exists(test_out) and not cfg.force:
+            log("already split (%s exists); skipping." % os.path.basename(test_out))
+            continue
+        info = split_csv(csv_path, out_dir=p.split, test_cap=cfg.test_sample,
+                         train_cap=cfg.train_cap, test_pick=cfg.test_pick)
+        log("counts: %s" % {k: v for k, v in info.items() if not k.endswith("_path")})
+
+
+# ---------------------------------------------------------------------------
+# stage 4: Combining_classes + build_class8_csvs
 # ---------------------------------------------------------------------------
 def stage_combine(cfg, p):
     step("STAGE 4/6  combine: per-class files -> one train + one test csv")
-    import pandas as pd
-    from Utility.Functions import Combining_classes
+    from Utility.Functions import Combining_classes, build_class8_csvs
     where(Combining_classes)
 
-    csvs = sorted(glob.glob(os.path.join(p.raw, "*.csv")))
-    if not csvs:
-        sys.exit("no csv in %s - run the earlier stages first" % p.raw)
-    classes = sorted({os.path.basename(c).split("-")[0] for c in csvs})
-    log("classes found from file names: %s" % classes)
-    log("labels: %s" % {c: LABEL_DICT.get(c, "?") for c in classes})
-
-    missing = [c for c in classes if c not in LABEL_DICT]
-    if missing:
-        sys.exit("class %s not in LABEL_DICT - rename the pcap per NAME_MAPPING" % missing)
-
-    substep("Combining_classes(): dedup, cap per class, add the Label column")
-    Combining_classes(p.raw + os.sep, classes,
-                      Number_in_individaul_class=cfg.train_cap,
-                      Number_of_test_samples=cfg.test_sample,
-                      label_dict=dict(LABEL_DICT))
+    if not glob.glob(os.path.join(p.split_train, "*_train.csv")):
+        sys.exit("no split files in %s - run the earlier stages first" % p.split)
+    substep("Combining_classes(): dedup, proportional per-sub-attack caps, GLOBAL test-vs-train "
+            "removal, train-only oversample=%s, Label column, class_weights.json" % cfg.oversample)
+    rep = Combining_classes(p.split, classes_list=None,
+                            Number_in_individaul_class=cfg.train_cap,
+                            Number_of_test_samples=cfg.test_sample,
+                            label_dict=dict(LABEL_DICT), oversample=cfg.oversample,
+                            out_dir=p.combined)
+    for cls, v in rep.items():
+        log("%-11s train=%s test=%s" % (cls, v["train"], v["test"]))
     for d in (p.raw_train, p.raw_test):
         log("%s: %s" % (os.path.relpath(d, p.work),
                         [os.path.basename(f) for f in sorted(glob.glob(os.path.join(d, "*")))]))
 
-    # Data_preprocessing_CIC-IoT2023.ipynb cells 11-14, minus the os.remove() calls
-    # so the intermediates stay around for a second look.
-    for sub, out_csv in ((p.raw_train, p.train_csv), (p.raw_test, p.test_csv)):
-        substep("concat %s/* -> %s (notebook cells 11-14)"
-                % (os.path.relpath(sub, p.work), os.path.basename(out_csv)))
-        files = sorted(glob.glob(os.path.join(sub, "*.csv")))
-        if not files:
-            log("nothing in %s, skipping" % sub)
-            continue
-        parts = []
-        for f in files:
-            df = pd.read_csv(f, low_memory=False)
-            log("  %-34s shape=%s label=%s" % (os.path.basename(f), df.shape,
-                                               sorted(df['Label'].unique()) if 'Label' in df else "-"))
-            parts.append(df)
-        final_df = pd.concat(parts, ignore_index=True)
-        present = [c for c in DROP_COLUMNS if c in final_df.columns]
-        absent = [c for c in DROP_COLUMNS if c not in final_df.columns]
-        final_df.drop(present, axis=1, inplace=True)
-        log("dropped %d biased/identifier columns%s"
-            % (len(present), (", %d were already gone: %s" % (len(absent), absent)) if absent else ""))
-        obj_cols = [c for c in final_df.columns
-                    if final_df[c].dtype == object and not c.startswith('udps.')]
-        if obj_cols:
-            log("WARNING non-numeric columns left, NIDSDataset will fail on them: %s" % obj_cols)
-        final_df.to_csv(out_csv, index=False)
-        log("wrote %s  shape=%s  label counts=%s"
-            % (out_csv, final_df.shape, final_df['Label'].value_counts().to_dict()))
+    substep("build_class8_csvs(): concat + drop the %d identifier columns (notebook cells 11-14) "
+            "+ header check" % len(DROP_COLUMNS))
+    where(build_class8_csvs)
+    strict = cfg.schema == "author82"
+    res = build_class8_csvs(p.combined, p.work, strict_header=strict)
+    for split, v in res.items():
+        log("%s: rows=%d cols=%d header_ok=%s labels=%s"
+            % (split, v["rows"], v["n_cols"], v["header_ok"], v["label_counts"]))
 
 
 # ---------------------------------------------------------------------------
@@ -483,13 +410,15 @@ def stage_graphs(cfg, p):
 
     substep("NIDSDataset(train, single_file=True, test=False)")
     train_ds = NIDSDataset(root=p.work, label_dict=LABEL_DICT, filename=[train_csv],
-                           skip_processing=False, test=False, single_file=True)
+                           skip_processing=False, test=False, single_file=True,
+                           include_packetflag=cfg.include_packetflag)
     log("train graphs: %d" % len(train_ds))
 
     if test_csv:
         substep("NIDSDataset(test, single_file=True, test=True)")
         test_ds = NIDSDataset(root=p.work, label_dict=LABEL_DICT, filename=[test_csv],
-                              skip_processing=False, test=True, single_file=True)
+                              skip_processing=False, test=True, single_file=True,
+                              include_packetflag=cfg.include_packetflag)
         log("test graphs : %d" % len(test_ds))
 
     substep("what one graph object looks like")
@@ -564,7 +493,7 @@ def stage_model(cfg, p):
         log("so the numbers are meaningless - this stage is here to be stepped through)")
 
 
-STAGES = [("extract", stage_extract), ("split", stage_split), ("features", stage_features),
+STAGES = [("extract", stage_extract), ("features", stage_features), ("split", stage_split),
           ("combine", stage_combine), ("graphs", stage_graphs), ("model", stage_model)]
 STAGE_NAMES = [n for n, _ in STAGES]
 
@@ -591,9 +520,21 @@ def parse_args(argv=None):
                     help="My_Custom(limit=): packets kept per flow (paper: 20)")
     ap.add_argument("--bpf", default=None, help="optional BPF filter, e.g. 'tcp port 80'")
 
-    ap.add_argument("--test-sample", type=int, default=4000)
-    ap.add_argument("--train-cap", type=int, default=20000)
-    ap.add_argument("--window-size", type=int, default=350)
+    ap.add_argument("--n-dissections", type=int, default=0,
+                    help="NFStream L7 dissection (0 = paper default; >0 adds 9 string columns)")
+
+    ap.add_argument("--test-sample", type=int, default=4000, help="test cap (per file and per class)")
+    ap.add_argument("--train-cap", type=int, default=20000, help="train cap (per file and per class)")
+    ap.add_argument("--test-pick", default="random", choices=["random", "tail"])
+    ap.add_argument("--window", default="350", help="350 (flows/packets) or e.g. 60s (time)")
+    ap.add_argument("--window-size", type=int, default=None, help="alias of --window (int)")
+    ap.add_argument("--window-unit", default="flows", choices=["flows", "time", "packets"])
+    ap.add_argument("--count-mode", default="author", choices=["author", "packets", "flows"])
+    ap.add_argument("--schema", default="author82", choices=["author82", "table1"])
+    ap.add_argument("--no-oversample", dest="oversample", action="store_false",
+                    help="do not duplicate minority train rows (use class_weights.json instead)")
+    ap.add_argument("--include-packetflag", action="store_true",
+                    help="graphs stage: 8 TCP flags + 1500 bytes per packet node")
 
     ap.add_argument("--max-graphs", type=int, default=200,
                     help="cap rows turned into graph objects (0 = all)")
@@ -620,7 +561,12 @@ def parse_args(argv=None):
                     help="mỗi hàm chỉ auto-break bao nhiêu lần đầu (mặc định 1)")
     ap.add_argument("--break-pause", choices=["off", "input", "pdb"], default="off",
                     help="khi KHÔNG có debugger: 'input' = dừng chờ bấm Enter mới chạy tiếp")
-    return ap.parse_args(argv)
+    cfg = ap.parse_args(argv)
+    if cfg.window_size is not None:
+        cfg.window = cfg.window_size
+    if cfg.window_unit != "time":
+        cfg.window = int(cfg.window)
+    return cfg
 
 
 def main(argv=None):

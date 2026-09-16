@@ -1,0 +1,7 @@
+lookup,n_keys,train_purity,test_accuracy,recall_Benign,recall_WebBased,recall_Spoofing,recall_Recon,recall_Mirai,recall_Dos,recall_DDos,recall_BruteForce
+proto,5,0.375,0.47,0.009,0.0,0.0,0.0,0.996,1.0,0.999,0.0
+proto+pk20+pk2,11,0.552,0.563,0.079,0.017,0.61,0.0,0.994,0.802,0.999,0.929
+proto+npk,63,0.656,0.684,0.059,0.347,0.616,0.59,0.994,0.934,0.999,0.692
+proto+npk+exp,63,0.656,0.684,0.059,0.347,0.616,0.59,0.994,0.934,0.999,0.692
+maxps_bucket,7,0.516,0.498,0.0,0.325,0.424,0.581,0.996,0.0,0.999,0.786
+proto+npk+maxps,296,0.819,0.816,0.567,0.734,0.647,0.747,0.998,0.952,0.999,0.887

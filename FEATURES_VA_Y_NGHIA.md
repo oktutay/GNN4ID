@@ -9,7 +9,7 @@ Nguồn chính của phần mô tả là:
 
 ## 1. Tổng quan schema
 
-- **Flow node**: 82 feature
+- **Flow node**: 82 feature (46 thống kê NFStream + `packet_size_variation` + 28 rolling + 7 one-hot; danh sách chuẩn: `Utility/Schema.py::FLOW_FEATURE_NAMES_82`)
 - **Packet node**: 1500 byte payload, cộng thêm 8 cờ TCP nếu bật `include_packetflag`
 - **Contain edge**: 4 feature
 - **Link edge**: 1 feature
@@ -47,31 +47,31 @@ Các feature này mô tả hành vi lưu lượng ở mức flow:
 | `src2dst_rst_packets`, `dst2src_rst_packets` | Số RST packet |
 | `src2dst_fin_packets`, `dst2src_fin_packets` | Số FIN packet |
 
-### 2.3 Feature mở rộng theo rolling window
+### 2.3 Feature mở rộng theo rolling window (28 cột + `packet_size_variation`)
 
-Nhóm này được tạo trong [Utility/Additional_Features.py](Utility/Additional_Features.py) với cửa sổ trượt `window_size=350`.
+Nhóm này được tạo trong [Utility/Additional_Features.py](Utility/Additional_Features.py) — bản 16/09/2026
+sinh **đúng 28 cột, đúng tên và thứ tự** như code tác giả (upstream 551d1f1) nên khớp CSV Drive/checkpoint.
+Cửa sổ mặc định = **350 flow trước đó** (dòng CSV, không phải packet, không phải giây; paper chỉ nói
+"rolling time window"), tính trên toàn file pcap sort theo `bidirectional_first_seen_ms`, `min_periods=1`,
+reset theo từng file. Mỗi feature có 2 nhóm: `*_Destination` (theo `dst_ip`) và `*_SourceDestination`
+(theo cặp `src_ip`-`dst_ip`).
 
-Ý nghĩa chung: đo mật độ và mẫu hành vi gần đây của destination hoặc cặp source-destination, để bắt các pattern như scan, brute force, DNS/HTTP probing, spoofing.
+| Cột (2 nhóm trừ khi ghi khác) | Nguồn | Đơn vị đếm (mặc định `count_mode='author'`) |
+| --- | --- | --- |
+| `Rolling_UDP_Requests_*` / `Rolling_TCP_Requests_*` / `Rolling_ICMP_Requests_*` | `protocol` == 17 / 6 / 1 | **flow** (1 mỗi dòng) |
+| `Rolling_ACK_Packets_*`, `Rolling_FIN_Packets_*`, `Rolling_rst_Packets_*`, `Rolling_psh_Packets_*`, `Rolling_SYN_Packets_*` | `bidirectional_<flag>_packets` | **packet** |
+| `Unique_Ports_In_SourceDestinationIP` (chỉ theo cặp) | số `dst_port` khác nhau trong cửa sổ (paper viết "source ports") | cổng |
+| `Rolling_http_port_*` | `dst_port` ∈ {80, 443, 8080} | flow |
+| `Rolling_Duration_Destination` / `Rolling_Duration_SourceDestination` | trung bình `bidirectional_duration_ms` | ms |
+| `Rolling_DNS_request_*` / `Rolling_DNS_request_*2` | `dst_port` == 53 / `src_port` == 53 | flow |
+| `Rolling_vulnerable_port` (chỉ theo cặp) | `dst_port` ∈ 13 cổng hay bị khai thác | flow |
+| `Rolling_packets_destination` / `Rolling_bipackets_destination` (chỉ theo đích) | tổng `src2dst_packets` / `bidirectional_packets` | packet |
+| `packet_size_variation` | std của 4 cột min/max packet size 2 chiều | byte |
 
-| Feature | Ý nghĩa |
-|---|---|
-| `Rolling_UDP_*` | Đếm packet UDP trong cửa sổ gần nhất |
-| `Rolling_TCP_*` | Đếm packet TCP trong cửa sổ gần nhất |
-| `Rolling_ICMP_*` | Đếm packet ICMP trong cửa sổ gần nhất |
-| `Rolling_ACK_*` | Đếm packet có ACK flag |
-| `Rolling_SYN_*` | Đếm packet có SYN flag |
-| `Rolling_FIN_*` | Đếm packet có FIN flag |
-| `Rolling_RST_*` | Đếm packet có RST flag |
-| `Rolling_psh_*` | Đếm packet có PSH flag |
-| `Rolling_http_port_*` | Tần suất truy cập cổng HTTP/HTTPS phổ biến |
-| `Rolling_DNS_*` | Tần suất truy vấn DNS |
-| `Rolling_vulnerable_port` | Tần suất đụng tới cổng thường bị khai thác |
-| `Rolling_packets_*` | Tổng packet trong cửa sổ |
-| `Rolling_bipackets_*` | Tổng packet hai chiều trong cửa sổ |
-| `Rolling_Average_Duration` / `Rolling_Duration_*` | Thời lượng trung bình của flow gần đây |
-| `Unique_Ports_In_SourceDestination*` | Số cổng nguồn khác nhau trong cặp source-destination, hữu ích cho phát hiện scan |
-
-> Lưu ý: tên feature rolling trong file tạo feature và file explainer của repo có vài biến thể tên gọi, nhưng ý nghĩa ngữ nghĩa là như nhau.
+`count_mode='packets'` nhân các cột đếm-flow với `bidirectional_packets` để mọi cột đều đếm packet như
+Table 1 mô tả; `window_unit='time'` (vd `'60s'`) hoặc `'packets'` đổi đơn vị cửa sổ; `schema='table1'`
+chỉ giữ 15 cột theo đích và đổi sang tên Table 1 (`Rolling_UDP_Sum`, ...). Với flood, cửa sổ đầy rất nhanh
+nên các cột này gần như hằng số (= 350) — xem `CIC_IoT2023_EDA_v2_VI.md`.
 
 ### 2.4 Feature phân loại
 

@@ -160,23 +160,31 @@ Option hay dùng: `--trace-max-calls 20` (log dày hơn), `--trace-echo` (in lu�
 
 ## 4. 6 stage và dữ liệu chạy qua đâu
 
+(Thứ tự **features → split** là thứ tự chốt 16/09/2026: rolling tính trên TOÀN file thô, không nhãn,
+chỉ nhìn quá khứ ⇒ temporal split sau đó không leak; xem docstring `Utility/Additional_Features.py`
+và `BAOCAO_PREPROCESS_V2.md`.)
+
 ```
 data/Debug and Trace/*.pcap
   │  (1) extract   NFStreamer + My_Custom(limit=20)      → 91 cột, mỗi flow giữ 20 packet
   ▼
-trace_out/raw/BruteForce-Dictionary.csv , WebBased-XSS.csv       ← tên theo NAME_MAPPING
-  │  (2) split_csv  lọc MAC attacker (paper Table 3) → dedup → chia theo thời gian 80/20
-  ├──────────────► trace_out/raw/test/<name>_test.csv            (20% flow mới nhất)
-  ▼                (file gốc bị GHI ĐÈ = phần train)
-  │  (3) additional_features  chạy RIÊNG cho train và test (nếu chạy chung → leak)
-  │      + 14 cột Rolling_*  + one-hot Exp_*/proto_*
+trace_out/raw/BruteForce-Dictionary_0.csv , WebBased-XSS_0.csv    ← tên theo resolve_class_subtype()
+  │  (2) additional_features  trên TOÀN file, sort theo bidirectional_first_seen_ms
+  │      + packet_size_variation + 28 cột Rolling_* (2 nhóm _Destination/_SourceDestination,
+  │        đúng tên/thứ tự tác giả) + one-hot Exp_*/proto_*   → 125 cột
   ▼
-  │  (4) Combining_classes  dedup + cap + thêm cột Label
-  ├──────────────► trace_out/raw/train/<Class>_train.csv , raw/test/<Class>_test.csv
-  ▼      rồi notebook cell 11-14: concat + drop 29 cột định danh/biased
+trace_out/features/<stem>.csv                                     (file raw KHÔNG bị ghi đè)
+  │  (3) split_csv  lọc MAC attacker (paper Table 3) → 20% flow mới nhất = test pool (cap 4000)
+  │      → 80% đầu = train pool → dedup feature-view → cap 20000/file
+  ├──────────────► trace_out/split/test/<stem>_test.csv
+  ▼                trace_out/split/train/<stem>_train.csv
+  │  (4) Combining_classes  dedup → cap 20k/4k THEO TỶ LỆ sub-attack → loại test∩train (toàn cục)
+  │      → oversample train lên 20k (chỉ train) + Label ; class_weights.json (đếm trước oversample)
+  ├──────────────► trace_out/combined/train/<Class>_train.csv , combined/test/<Class>_test.csv
+  ▼      rồi build_class8_csvs(): concat + drop 29 cột định danh + assert header 97 cột
 trace_out/df_class_8_train.csv , df_class_8_test.csv
   │  (5) NIDSDataset.process   1 dòng flow → 1 HeteroData
-  ▼      flow node (1×N feature) | packet node (20×1500 byte payload)
+  ▼      flow node (1×82 feature) | packet node (≤20×1500 byte payload; --include-packetflag → 1508)
   │      contain edge flow→packet [direction, ip_size, transport_size, payload_size]
   │      link edge packet_i→packet_i+1 [delta_time] , rồi T.ToUndirected()
 trace_out/processed/data_*.pt , data_test_*.pt
@@ -188,18 +196,20 @@ Chạy 1 stage riêng (dùng lại file đã có trên đĩa):
 
 ```bash
 python Debug/trace_pipeline.py --stage graphs --max-graphs 5 --trace-max-calls 20
-python Debug/trace_pipeline.py --stage split features --force
+python Debug/trace_pipeline.py --stage features split --force
+python Debug/trace_pipeline.py --stage all --reset --window 60s --window-unit time   # cửa sổ thời gian
+python Debug/trace_pipeline.py --stage all --reset --no-oversample                    # biến thể class-weights
 ```
 
 Option chính: `--max-flows` (số flow giữ lại mỗi pcap, 0 = tất cả), `--max-graphs`
-(số graph object tạo ra), `--packet-limit` (packet/flow, paper = 20), `--bpf "tcp port 80"`,
+(số graph object tạo ra), `--packet-limit` (packet/flow, paper = 20), `--n-dissections` (L7 NFStream),
+`--window`/`--window-unit flows|time|packets`/`--count-mode`/`--schema author82|table1`,
+`--test-pick random|tail`, `--no-oversample`, `--include-packetflag`, `--bpf "tcp port 80"`,
 `--epochs`, `--device cpu|cuda|auto`, `--reset` (xoá `trace_out/` làm lại), `--force`.
 
-Lưu ý về thứ tự: `split` ghi đè file raw, `features` không idempotent (chạy lần 2 sẽ lỗi vì
-`protocol`/`expiration_id` đã bị get_dummies ăn mất). Driver ghi `trace_out/.trace_state.json`
-và **từ chối** chạy lại 2 stage này trên cùng working dir (`--force` để làm bừa). Muốn làm lại
-cho đúng: `--reset` rồi `--stage all`. `combine`, `graphs`, `model` chạy lại bao nhiêu lần cũng được
-(`graphs` xoá `processed/*.pt` cũ trước khi build lại vì index chạy lại từ 0).
+Không stage nào ghi đè input nữa (mỗi stage có thư mục riêng), nên chạy lại stage nào cũng được;
+`--force` để tính lại output đã có. `graphs` xoá `processed/*.pt` cũ trước khi build lại vì index chạy lại từ 0.
+Bản đầy đủ (không phải để debug) là `run_preprocessing.py` ở thư mục gốc — cùng hàm, thêm manifest.json.
 
 ---
 
@@ -217,10 +227,10 @@ cho đúng: `--reset` rồi `--stage all`. `combine`, `graphs`, `model` chạy l
    `additional_features` bản hiện tại sinh 14 cột `Rolling_*` → graph có **69** flow feature;
    còn `data/CIC_IoT2023_Processed_Data/df_class_8_train_clean.csv` (tải từ Drive của tác giả)
    có 27 cột rolling kiểu `*_Destination` / `*_SourceDestination` → **82** flow feature
-   (khớp `logs/train.log`: `flow.x=(1, 82)`). Nghĩa là checkpoint trong `checkpoints/` **không**
-   dùng lại được cho graph sinh từ pcap bằng code hiện tại, và ngược lại. Cần chọn: hoặc sửa
-   `additional_features` sinh đủ bộ cột như dataset gốc, hoặc build lại toàn bộ graph + train lại
-   từ pcap bằng code hiện tại.
+   (khớp `logs/train.log`: `flow.x=(1, 82)`). **Đã giải quyết 16/09/2026:** `Additional_Features.py`
+   sinh lại đúng 28 cột + `packet_size_variation` như tác giả (kiểm chứng bit-identical với code
+   upstream 551d1f1 trên 2 pcap, `Debug/verify_preprocessing.py` check 5), header 97 cột được assert
+   trong `build_class8_csvs()`.
 
 ---
 
@@ -229,6 +239,7 @@ cho đúng: `--reset` rồi `--stage all`. `combine`, `graphs`, `model` chạy l
 | File | Việc |
 |---|---|
 | `Debug/trace_pipeline.py` | driver 6 stage, in ra từng bước + input/output từng hàm |
+| `Debug/verify_preprocessing.py` | 9 nhóm assertion trên thư mục output của `run_preprocessing.py` |
 | `Debug/tracer.py` | tracer `sys.setprofile` (log thứ tự gọi hàm) + `Tee` (console → file log) |
 | `.vscode/launch.json` | 11 config debug (F5), có ở cả `XG_NID/.vscode/` và `GNN4ID/.vscode/` |
 | `.vscode/tasks.json` | 4 task chạy trace không cần debugger |

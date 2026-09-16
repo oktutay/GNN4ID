@@ -1,0 +1,209 @@
+split,class,keyword,packets,flows,flow_share
+test,Benign,dvwa,0,0,0.0
+test,Benign,vulnerabilities,0,0,0.0
+test,Benign,sqli,0,0,0.0
+test,Benign,xss,0,0,0.0
+test,Benign,exec,0,0,0.0
+test,Benign,upload,0,0,0.0
+test,Benign,backdoor,0,0,0.0
+test,Benign,brute,0,0,0.0
+test,Benign,hijack,0,0,0.0
+test,Benign,Host: 192.168,0,0,0.0
+test,Benign,192.168.,541,73,0.0182
+test,Benign,GET /,44,38,0.0095
+test,Benign,POST /,0,0,0.0
+test,Benign,HTTP/1,667,123,0.0307
+test,Benign,User-Agent,14,14,0.0035
+test,Benign,python-requests,0,0,0.0
+test,Benign,nmap,0,0,0.0
+test,Benign,Nmap,0,0,0.0
+test,Benign,SSH-,0,0,0.0
+test,Benign,<script,0,0,0.0
+test,Benign,union,0,0,0.0
+test,Benign,select ,0,0,0.0
+test,Benign,cmd=,0,0,0.0
+test,Benign,ip=,0,0,0.0
+test,Benign,admin,1,1,0.0003
+test,Benign,login,0,0,0.0
+test,WebBased,dvwa,149,136,0.1248
+test,WebBased,vulnerabilities,116,107,0.0982
+test,WebBased,sqli,72,70,0.0642
+test,WebBased,xss,19,12,0.011
+test,WebBased,exec,104,51,0.0468
+test,WebBased,upload,36,32,0.0294
+test,WebBased,backdoor,25,22,0.0202
+test,WebBased,brute,0,0,0.0
+test,WebBased,hijack,0,0,0.0
+test,WebBased,Host: 192.168,357,186,0.1706
+test,WebBased,192.168.,959,244,0.2239
+test,WebBased,GET /,430,264,0.2422
+test,WebBased,POST /,54,49,0.045
+test,WebBased,HTTP/1,1618,385,0.3532
+test,WebBased,User-Agent,484,313,0.2872
+test,WebBased,python-requests,0,0,0.0
+test,WebBased,nmap,6,2,0.0018
+test,WebBased,Nmap,1,1,0.0009
+test,WebBased,SSH-,0,0,0.0
+test,WebBased,<script,4,4,0.0037
+test,WebBased,union,0,0,0.0
+test,WebBased,select ,8,7,0.0064
+test,WebBased,cmd=,8,7,0.0064
+test,WebBased,ip=,37,26,0.0239
+test,WebBased,admin,4,3,0.0028
+test,WebBased,login,7,5,0.0046
+test,Spoofing,dvwa,0,0,0.0
+test,Spoofing,vulnerabilities,0,0,0.0
+test,Spoofing,sqli,0,0,0.0
+test,Spoofing,xss,2,2,0.0005
+test,Spoofing,exec,0,0,0.0
+test,Spoofing,upload,2,1,0.0003
+test,Spoofing,backdoor,0,0,0.0
+test,Spoofing,brute,0,0,0.0
+test,Spoofing,hijack,0,0,0.0
+test,Spoofing,Host: 192.168,2,2,0.0005
+test,Spoofing,192.168.,724,83,0.0208
+test,Spoofing,GET /,10,9,0.0022
+test,Spoofing,POST /,0,0,0.0
+test,Spoofing,HTTP/1,856,118,0.0295
+test,Spoofing,User-Agent,14,8,0.002
+test,Spoofing,python-requests,0,0,0.0
+test,Spoofing,nmap,0,0,0.0
+test,Spoofing,Nmap,0,0,0.0
+test,Spoofing,SSH-,0,0,0.0
+test,Spoofing,<script,0,0,0.0
+test,Spoofing,union,0,0,0.0
+test,Spoofing,select ,0,0,0.0
+test,Spoofing,cmd=,0,0,0.0
+test,Spoofing,ip=,0,0,0.0
+test,Spoofing,admin,1,1,0.0003
+test,Spoofing,login,0,0,0.0
+test,Recon,dvwa,0,0,0.0
+test,Recon,vulnerabilities,0,0,0.0
+test,Recon,sqli,0,0,0.0
+test,Recon,xss,0,0,0.0
+test,Recon,exec,0,0,0.0
+test,Recon,upload,0,0,0.0
+test,Recon,backdoor,0,0,0.0
+test,Recon,brute,0,0,0.0
+test,Recon,hijack,0,0,0.0
+test,Recon,Host: 192.168,0,0,0.0
+test,Recon,192.168.,27,4,0.001
+test,Recon,GET /,224,224,0.056
+test,Recon,POST /,0,0,0.0
+test,Recon,HTTP/1,496,235,0.0587
+test,Recon,User-Agent,223,223,0.0558
+test,Recon,python-requests,0,0,0.0
+test,Recon,nmap,1,1,0.0003
+test,Recon,Nmap,0,0,0.0
+test,Recon,SSH-,0,0,0.0
+test,Recon,<script,0,0,0.0
+test,Recon,union,0,0,0.0
+test,Recon,select ,0,0,0.0
+test,Recon,cmd=,0,0,0.0
+test,Recon,ip=,0,0,0.0
+test,Recon,admin,0,0,0.0
+test,Recon,login,0,0,0.0
+test,Mirai,dvwa,0,0,0.0
+test,Mirai,vulnerabilities,0,0,0.0
+test,Mirai,sqli,0,0,0.0
+test,Mirai,xss,3,3,0.0008
+test,Mirai,exec,0,0,0.0
+test,Mirai,upload,0,0,0.0
+test,Mirai,backdoor,0,0,0.0
+test,Mirai,brute,0,0,0.0
+test,Mirai,hijack,0,0,0.0
+test,Mirai,Host: 192.168,0,0,0.0
+test,Mirai,192.168.,3,1,0.0003
+test,Mirai,GET /,0,0,0.0
+test,Mirai,POST /,0,0,0.0
+test,Mirai,HTTP/1,3,1,0.0003
+test,Mirai,User-Agent,0,0,0.0
+test,Mirai,python-requests,0,0,0.0
+test,Mirai,nmap,0,0,0.0
+test,Mirai,Nmap,0,0,0.0
+test,Mirai,SSH-,0,0,0.0
+test,Mirai,<script,0,0,0.0
+test,Mirai,union,0,0,0.0
+test,Mirai,select ,0,0,0.0
+test,Mirai,cmd=,0,0,0.0
+test,Mirai,ip=,2,2,0.0005
+test,Mirai,admin,0,0,0.0
+test,Mirai,login,0,0,0.0
+test,Dos,dvwa,0,0,0.0
+test,Dos,vulnerabilities,0,0,0.0
+test,Dos,sqli,0,0,0.0
+test,Dos,xss,0,0,0.0
+test,Dos,exec,0,0,0.0
+test,Dos,upload,0,0,0.0
+test,Dos,backdoor,0,0,0.0
+test,Dos,brute,0,0,0.0
+test,Dos,hijack,0,0,0.0
+test,Dos,Host: 192.168,0,0,0.0
+test,Dos,192.168.,0,0,0.0
+test,Dos,GET /,0,0,0.0
+test,Dos,POST /,0,0,0.0
+test,Dos,HTTP/1,0,0,0.0
+test,Dos,User-Agent,0,0,0.0
+test,Dos,python-requests,0,0,0.0
+test,Dos,nmap,0,0,0.0
+test,Dos,Nmap,0,0,0.0
+test,Dos,SSH-,0,0,0.0
+test,Dos,<script,0,0,0.0
+test,Dos,union,0,0,0.0
+test,Dos,select ,0,0,0.0
+test,Dos,cmd=,0,0,0.0
+test,Dos,ip=,0,0,0.0
+test,Dos,admin,0,0,0.0
+test,Dos,login,0,0,0.0
+test,DDos,dvwa,0,0,0.0
+test,DDos,vulnerabilities,0,0,0.0
+test,DDos,sqli,0,0,0.0
+test,DDos,xss,0,0,0.0
+test,DDos,exec,0,0,0.0
+test,DDos,upload,0,0,0.0
+test,DDos,backdoor,0,0,0.0
+test,DDos,brute,0,0,0.0
+test,DDos,hijack,0,0,0.0
+test,DDos,Host: 192.168,0,0,0.0
+test,DDos,192.168.,0,0,0.0
+test,DDos,GET /,2,2,0.0005
+test,DDos,POST /,0,0,0.0
+test,DDos,HTTP/1,4,2,0.0005
+test,DDos,User-Agent,2,2,0.0005
+test,DDos,python-requests,0,0,0.0
+test,DDos,nmap,0,0,0.0
+test,DDos,Nmap,0,0,0.0
+test,DDos,SSH-,0,0,0.0
+test,DDos,<script,0,0,0.0
+test,DDos,union,0,0,0.0
+test,DDos,select ,0,0,0.0
+test,DDos,cmd=,0,0,0.0
+test,DDos,ip=,0,0,0.0
+test,DDos,admin,0,0,0.0
+test,DDos,login,0,0,0.0
+test,BruteForce,dvwa,0,0,0.0
+test,BruteForce,vulnerabilities,0,0,0.0
+test,BruteForce,sqli,0,0,0.0
+test,BruteForce,xss,0,0,0.0
+test,BruteForce,exec,0,0,0.0
+test,BruteForce,upload,0,0,0.0
+test,BruteForce,backdoor,0,0,0.0
+test,BruteForce,brute,0,0,0.0
+test,BruteForce,hijack,0,0,0.0
+test,BruteForce,Host: 192.168,0,0,0.0
+test,BruteForce,192.168.,283,125,0.2677
+test,BruteForce,GET /,0,0,0.0
+test,BruteForce,POST /,0,0,0.0
+test,BruteForce,HTTP/1,146,19,0.0407
+test,BruteForce,User-Agent,0,0,0.0
+test,BruteForce,python-requests,0,0,0.0
+test,BruteForce,nmap,0,0,0.0
+test,BruteForce,Nmap,0,0,0.0
+test,BruteForce,SSH-,193,100,0.2141
+test,BruteForce,<script,0,0,0.0
+test,BruteForce,union,0,0,0.0
+test,BruteForce,select ,0,0,0.0
+test,BruteForce,cmd=,0,0,0.0
+test,BruteForce,ip=,0,0,0.0
+test,BruteForce,admin,0,0,0.0
+test,BruteForce,login,0,0,0.0

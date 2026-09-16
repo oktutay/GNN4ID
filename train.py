@@ -59,6 +59,9 @@ def parse_args():
     p.add_argument("--save-path", default="checkpoints/xgnid_hgnn.pth")
     p.add_argument("--eval-only", action="store_true",
                    help="Skip training; load --save-path and run test_cm_with_edge_att.")
+    p.add_argument("--include-packetflag", action="store_true",
+                   help="Packet nodes = 8 TCP flags + 1500 payload bytes (1508-d). Must match "
+                        "how the graphs were built; checkpoints trained on 1500-d nodes will not load.")
     p.add_argument("--class-weights", default=None,
                    help="Path to class_weights.json (produced by clean_existing_data.py). "
                         "Pass this instead of oversampling the minority classes; the loss "
@@ -104,6 +107,7 @@ def main():
         skip_processing=args.skip_processing,
         test=False,
         single_file=True,
+        include_packetflag=args.include_packetflag,
     )
     print(f"[data] train graphs={len(train_ds)}")
 
@@ -117,6 +121,7 @@ def main():
             skip_processing=args.skip_processing,
             test=True,
             single_file=True,
+            include_packetflag=args.include_packetflag,
         )
         print(f"[data] test graphs={len(test_ds)}")
 

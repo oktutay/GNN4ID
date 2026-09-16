@@ -16,9 +16,21 @@ LABEL_DICT = {
 }
 
 
+def parse_args():
+    import argparse
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("root", nargs="?",
+                    default="/home/tutay/Tutay/Tutay_Sec/XG_NID/data/CIC_IoT2023_Processed_Data",
+                    help="data root holding df_class_8_{train,test}[_clean].csv; graphs go to <root>/processed/")
+    ap.add_argument("--include-packetflag", action="store_true",
+                    help="prepend the 8 TCP flags to each packet node (1508-d instead of 1500-d; "
+                         "checkpoints trained on 1500-d packet nodes will not load)")
+    return ap.parse_args()
+
+
 def main():
-    root = sys.argv[1] if len(sys.argv) > 1 else \
-        "/home/tutay/Tutay/Tutay_Sec/XG_NID/data/CIC_IoT2023_Processed_Data"
+    args = parse_args()
+    root = args.root
     # Prefer the de-leaked / de-duplicated CSVs produced by clean_existing_data.py
     # when they exist; fall back to the original (leaky) combined CSVs otherwise.
     train_clean = os.path.join(root, "df_class_8_train_clean.csv")
@@ -36,6 +48,7 @@ def main():
     train_ds = NIDSDataset(
         root=root, label_dict=LABEL_DICT, filename=[train_csv],
         skip_processing=False, test=False, single_file=True,
+        include_packetflag=args.include_packetflag,
     )
     print(f"[build] train graphs created: {len(train_ds)}")
 
@@ -43,6 +56,7 @@ def main():
     test_ds = NIDSDataset(
         root=root, label_dict=LABEL_DICT, filename=[test_csv],
         skip_processing=False, test=True, single_file=True,
+        include_packetflag=args.include_packetflag,
     )
     print(f"[build] test graphs created: {len(test_ds)}")
 

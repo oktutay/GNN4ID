@@ -1,0 +1,17 @@
+file,column,rows_compared,share_different,median_rel_diff,dense_share_eq_window,thin_share_eq_window,dense_median,thin_median
+BruteForce-Dictionary_0,Rolling_TCP_Requests_Destination,2208,0.614,0.667,0.057,0.0,10.0,3.0
+BruteForce-Dictionary_0,Rolling_packets_destination,2208,0.941,0.769,0.002,0.0,283.0,62.5
+BruteForce-Dictionary_0,Rolling_Duration_Destination,2208,0.909,0.175,0.0,0.0,5891.934285714286,3277.8150997150997
+BruteForce-Dictionary_0,Unique_Ports_In_SourceDestinationIP,2208,0.194,0.0,0.0,0.0,1.0,1.0
+BruteForce-Dictionary_0,Rolling_TCP_Requests_Destination (test slice alone vs whole file),2209,0.506,0.003,0.047,0.004,33.0,4.0
+BruteForce-Dictionary_0,Rolling_packets_destination (test slice alone vs whole file),2209,0.865,0.851,0.007,0.001,530.0,79.0
+BruteForce-Dictionary_0,Rolling_Duration_Destination (test slice alone vs whole file),2209,0.845,0.147,0.0,0.0,4482.119521912351,1702.799019607843
+BruteForce-Dictionary_0,Unique_Ports_In_SourceDestinationIP (test slice alone vs whole file),2209,0.151,0.0,0.0,0.0,1.0,1.0
+WebBased-XSS_0,Rolling_TCP_Requests_Destination,854,0.494,0.0,0.0,0.0,1.0,1.0
+WebBased-XSS_0,Rolling_packets_destination,854,0.919,0.771,0.0,0.0,91.0,21.0
+WebBased-XSS_0,Rolling_Duration_Destination,854,0.886,0.151,0.0,0.0,10796.790670079106,9110.458333333332
+WebBased-XSS_0,Unique_Ports_In_SourceDestinationIP,854,0.185,0.0,0.0,0.0,1.0,1.0
+WebBased-XSS_0,Rolling_TCP_Requests_Destination (test slice alone vs whole file),854,0.496,0.0,0.0,0.0,2.0,0.0
+WebBased-XSS_0,Rolling_packets_destination (test slice alone vs whole file),854,0.95,0.852,0.0,0.001,145.0,23.5
+WebBased-XSS_0,Rolling_Duration_Destination (test slice alone vs whole file),854,0.926,0.35,0.0,0.0,11160.740694789081,14424.158653846154
+WebBased-XSS_0,Unique_Ports_In_SourceDestinationIP (test slice alone vs whole file),854,0.221,0.0,0.0,0.0,1.0,1.0

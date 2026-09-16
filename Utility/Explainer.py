@@ -22,46 +22,9 @@ from captum.attr import IntegratedGradients
 # Derived from inspecting the column order of df_class_8_train.csv after
 # dropping ['Label'] + the 14 udps.* packet-array columns. Matches what
 # NIDSDataset._get_flow_node_features stacks into flow.x.
-FLOW_FEATURE_NAMES_82 = [
-    "src2dst_duration_ms", "src2dst_packets", "src2dst_bytes",
-    "dst2src_duration_ms", "dst2src_packets", "dst2src_bytes",
-    "bidirectional_min_ps", "bidirectional_mean_ps",
-    "bidirectional_stddev_ps", "bidirectional_max_ps",
-    "src2dst_min_ps", "src2dst_mean_ps", "src2dst_stddev_ps", "src2dst_max_ps",
-    "dst2src_min_ps", "dst2src_mean_ps", "dst2src_stddev_ps", "dst2src_max_ps",
-    "bidirectional_min_piat_ms", "bidirectional_mean_piat_ms",
-    "bidirectional_stddev_piat_ms", "bidirectional_max_piat_ms",
-    "src2dst_min_piat_ms", "src2dst_mean_piat_ms",
-    "src2dst_stddev_piat_ms", "src2dst_max_piat_ms",
-    "dst2src_min_piat_ms", "dst2src_mean_piat_ms",
-    "dst2src_stddev_piat_ms", "dst2src_max_piat_ms",
-    "src2dst_syn_packets", "src2dst_cwr_packets", "src2dst_ece_packets",
-    "src2dst_urg_packets", "src2dst_ack_packets", "src2dst_psh_packets",
-    "src2dst_rst_packets", "src2dst_fin_packets",
-    "dst2src_syn_packets", "dst2src_cwr_packets", "dst2src_ece_packets",
-    "dst2src_urg_packets", "dst2src_ack_packets", "dst2src_psh_packets",
-    "dst2src_rst_packets", "dst2src_fin_packets",
-    "packet_size_variation",
-    "Rolling_UDP_Requests_SourceDestination", "Rolling_UDP_Requests_Destination",
-    "Rolling_TCP_Requests_SourceDestination", "Rolling_TCP_Requests_Destination",
-    "Rolling_ACK_Packets_SourceDestination", "Rolling_ACK_Packets_Destination",
-    "Rolling_FIN_Packets_SourceDestination", "Rolling_FIN_Packets_Destination",
-    "Rolling_rst_Packets_SourceDestination", "Rolling_rst_Packets_Destination",
-    "Rolling_psh_Packets_SourceDestination", "Rolling_psh_Packets_Destination",
-    "Rolling_SYN_Packets_SourceDestination", "Rolling_SYN_Packets_Destination",
-    "Unique_Ports_In_SourceDestinationIP",
-    "Rolling_ICMP_Requests_SourceDestination",
-    "Rolling_ICMP_Requests_Destination",
-    "Rolling_http_port_SourceDestination", "Rolling_http_port_Destination",
-    "Rolling_Duration_Destination", "Rolling_Duration_SourceDestination",
-    "Rolling_DNS_request_SourceDestination", "Rolling_DNS_request_Destination",
-    "Rolling_DNS_request_SourceDestination2",
-    "Rolling_DNS_request_Destination2",
-    "Rolling_vulnerable_port",
-    "Rolling_packets_destination", "Rolling_bipackets_destination",
-    "Exp_0", "Exp_-1",
-    "proto_1", "proto_2", "proto_6", "proto_17", "proto_58",
-]
+# The authors' exact 82 flow-feature names, in Drive-CSV order, now live in
+# Utility/Schema.py so the preprocessing pipeline and the explainer share them.
+from Utility.Schema import FLOW_FEATURE_NAMES_82  # noqa: E402
 assert len(FLOW_FEATURE_NAMES_82) == 82
 
 

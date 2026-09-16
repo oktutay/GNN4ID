@@ -1,0 +1,209 @@
+split,class,keyword,packets,flows,flow_share
+train,Benign,dvwa,0,0,0.0
+train,Benign,vulnerabilities,0,0,0.0
+train,Benign,sqli,1,1,0.0001
+train,Benign,xss,6,6,0.0003
+train,Benign,exec,0,0,0.0
+train,Benign,upload,0,0,0.0
+train,Benign,backdoor,0,0,0.0
+train,Benign,brute,0,0,0.0
+train,Benign,hijack,0,0,0.0
+train,Benign,Host: 192.168,4,4,0.0002
+train,Benign,192.168.,1802,306,0.0153
+train,Benign,GET /,162,149,0.0075
+train,Benign,POST /,3,3,0.0001
+train,Benign,HTTP/1,2349,521,0.0261
+train,Benign,User-Agent,55,55,0.0027
+train,Benign,python-requests,0,0,0.0
+train,Benign,nmap,0,0,0.0
+train,Benign,Nmap,0,0,0.0
+train,Benign,SSH-,0,0,0.0
+train,Benign,<script,0,0,0.0
+train,Benign,union,0,0,0.0
+train,Benign,select ,0,0,0.0
+train,Benign,cmd=,0,0,0.0
+train,Benign,ip=,6,6,0.0003
+train,Benign,admin,1,1,0.0001
+train,Benign,login,0,0,0.0
+train,WebBased,dvwa,2598,2225,0.1113
+train,WebBased,vulnerabilities,1880,1744,0.0872
+train,WebBased,sqli,1336,1306,0.0653
+train,WebBased,xss,429,200,0.01
+train,WebBased,exec,1504,639,0.0319
+train,WebBased,upload,574,509,0.0255
+train,WebBased,backdoor,571,402,0.0201
+train,WebBased,brute,0,0,0.0
+train,WebBased,hijack,21,21,0.001
+train,WebBased,Host: 192.168,6154,3066,0.1533
+train,WebBased,192.168.,15204,4202,0.2101
+train,WebBased,GET /,7450,4425,0.2213
+train,WebBased,POST /,714,663,0.0331
+train,WebBased,HTTP/1,26315,6497,0.3249
+train,WebBased,User-Agent,8164,5076,0.2538
+train,WebBased,python-requests,0,0,0.0
+train,WebBased,nmap,5,5,0.0003
+train,WebBased,Nmap,0,0,0.0
+train,WebBased,SSH-,0,0,0.0
+train,WebBased,<script,86,86,0.0043
+train,WebBased,union,0,0,0.0
+train,WebBased,select ,146,122,0.0061
+train,WebBased,cmd=,113,82,0.0041
+train,WebBased,ip=,344,297,0.0149
+train,WebBased,admin,24,24,0.0012
+train,WebBased,login,145,82,0.0041
+train,Spoofing,dvwa,0,0,0.0
+train,Spoofing,vulnerabilities,0,0,0.0
+train,Spoofing,sqli,0,0,0.0
+train,Spoofing,xss,4,3,0.0001
+train,Spoofing,exec,0,0,0.0
+train,Spoofing,upload,0,0,0.0
+train,Spoofing,backdoor,0,0,0.0
+train,Spoofing,brute,0,0,0.0
+train,Spoofing,hijack,0,0,0.0
+train,Spoofing,Host: 192.168,27,27,0.0014
+train,Spoofing,192.168.,3353,414,0.0207
+train,Spoofing,GET /,74,54,0.0027
+train,Spoofing,POST /,0,0,0.0
+train,Spoofing,HTTP/1,4080,586,0.0293
+train,Spoofing,User-Agent,49,41,0.0021
+train,Spoofing,python-requests,0,0,0.0
+train,Spoofing,nmap,0,0,0.0
+train,Spoofing,Nmap,0,0,0.0
+train,Spoofing,SSH-,0,0,0.0
+train,Spoofing,<script,0,0,0.0
+train,Spoofing,union,0,0,0.0
+train,Spoofing,select ,0,0,0.0
+train,Spoofing,cmd=,0,0,0.0
+train,Spoofing,ip=,3,3,0.0001
+train,Spoofing,admin,12,11,0.0006
+train,Spoofing,login,0,0,0.0
+train,Recon,dvwa,1,1,0.0001
+train,Recon,vulnerabilities,0,0,0.0
+train,Recon,sqli,0,0,0.0
+train,Recon,xss,0,0,0.0
+train,Recon,exec,0,0,0.0
+train,Recon,upload,0,0,0.0
+train,Recon,backdoor,0,0,0.0
+train,Recon,brute,0,0,0.0
+train,Recon,hijack,0,0,0.0
+train,Recon,Host: 192.168,2,2,0.0001
+train,Recon,192.168.,333,39,0.0019
+train,Recon,GET /,1079,1079,0.0539
+train,Recon,POST /,0,0,0.0
+train,Recon,HTTP/1,2529,1129,0.0565
+train,Recon,User-Agent,1073,1073,0.0537
+train,Recon,python-requests,0,0,0.0
+train,Recon,nmap,4,4,0.0002
+train,Recon,Nmap,3,3,0.0001
+train,Recon,SSH-,0,0,0.0
+train,Recon,<script,1,1,0.0001
+train,Recon,union,0,0,0.0
+train,Recon,select ,0,0,0.0
+train,Recon,cmd=,0,0,0.0
+train,Recon,ip=,0,0,0.0
+train,Recon,admin,2,2,0.0001
+train,Recon,login,1,1,0.0001
+train,Mirai,dvwa,0,0,0.0
+train,Mirai,vulnerabilities,0,0,0.0
+train,Mirai,sqli,0,0,0.0
+train,Mirai,xss,8,8,0.0004
+train,Mirai,exec,0,0,0.0
+train,Mirai,upload,0,0,0.0
+train,Mirai,backdoor,0,0,0.0
+train,Mirai,brute,0,0,0.0
+train,Mirai,hijack,0,0,0.0
+train,Mirai,Host: 192.168,0,0,0.0
+train,Mirai,192.168.,0,0,0.0
+train,Mirai,GET /,0,0,0.0
+train,Mirai,POST /,0,0,0.0
+train,Mirai,HTTP/1,8,2,0.0001
+train,Mirai,User-Agent,0,0,0.0
+train,Mirai,python-requests,0,0,0.0
+train,Mirai,nmap,0,0,0.0
+train,Mirai,Nmap,0,0,0.0
+train,Mirai,SSH-,0,0,0.0
+train,Mirai,<script,0,0,0.0
+train,Mirai,union,0,0,0.0
+train,Mirai,select ,0,0,0.0
+train,Mirai,cmd=,0,0,0.0
+train,Mirai,ip=,9,9,0.0004
+train,Mirai,admin,0,0,0.0
+train,Mirai,login,0,0,0.0
+train,Dos,dvwa,0,0,0.0
+train,Dos,vulnerabilities,0,0,0.0
+train,Dos,sqli,0,0,0.0
+train,Dos,xss,0,0,0.0
+train,Dos,exec,0,0,0.0
+train,Dos,upload,0,0,0.0
+train,Dos,backdoor,0,0,0.0
+train,Dos,brute,0,0,0.0
+train,Dos,hijack,0,0,0.0
+train,Dos,Host: 192.168,0,0,0.0
+train,Dos,192.168.,0,0,0.0
+train,Dos,GET /,0,0,0.0
+train,Dos,POST /,0,0,0.0
+train,Dos,HTTP/1,0,0,0.0
+train,Dos,User-Agent,0,0,0.0
+train,Dos,python-requests,0,0,0.0
+train,Dos,nmap,0,0,0.0
+train,Dos,Nmap,0,0,0.0
+train,Dos,SSH-,0,0,0.0
+train,Dos,<script,0,0,0.0
+train,Dos,union,0,0,0.0
+train,Dos,select ,0,0,0.0
+train,Dos,cmd=,0,0,0.0
+train,Dos,ip=,0,0,0.0
+train,Dos,admin,0,0,0.0
+train,Dos,login,0,0,0.0
+train,DDos,dvwa,0,0,0.0
+train,DDos,vulnerabilities,0,0,0.0
+train,DDos,sqli,0,0,0.0
+train,DDos,xss,0,0,0.0
+train,DDos,exec,0,0,0.0
+train,DDos,upload,0,0,0.0
+train,DDos,backdoor,0,0,0.0
+train,DDos,brute,0,0,0.0
+train,DDos,hijack,0,0,0.0
+train,DDos,Host: 192.168,0,0,0.0
+train,DDos,192.168.,0,0,0.0
+train,DDos,GET /,8,8,0.0004
+train,DDos,POST /,0,0,0.0
+train,DDos,HTTP/1,16,8,0.0004
+train,DDos,User-Agent,8,8,0.0004
+train,DDos,python-requests,0,0,0.0
+train,DDos,nmap,0,0,0.0
+train,DDos,Nmap,0,0,0.0
+train,DDos,SSH-,0,0,0.0
+train,DDos,<script,0,0,0.0
+train,DDos,union,0,0,0.0
+train,DDos,select ,0,0,0.0
+train,DDos,cmd=,0,0,0.0
+train,DDos,ip=,0,0,0.0
+train,DDos,admin,0,0,0.0
+train,DDos,login,0,0,0.0
+train,BruteForce,dvwa,0,0,0.0
+train,BruteForce,vulnerabilities,0,0,0.0
+train,BruteForce,sqli,0,0,0.0
+train,BruteForce,xss,0,0,0.0
+train,BruteForce,exec,0,0,0.0
+train,BruteForce,upload,0,0,0.0
+train,BruteForce,backdoor,0,0,0.0
+train,BruteForce,brute,0,0,0.0
+train,BruteForce,hijack,0,0,0.0
+train,BruteForce,Host: 192.168,0,0,0.0
+train,BruteForce,192.168.,11597,5403,0.2702
+train,BruteForce,GET /,0,0,0.0
+train,BruteForce,POST /,0,0,0.0
+train,BruteForce,HTTP/1,5641,754,0.0377
+train,BruteForce,User-Agent,0,0,0.0
+train,BruteForce,python-requests,0,0,0.0
+train,BruteForce,nmap,0,0,0.0
+train,BruteForce,Nmap,0,0,0.0
+train,BruteForce,SSH-,8904,4653,0.2326
+train,BruteForce,<script,0,0,0.0
+train,BruteForce,union,0,0,0.0
+train,BruteForce,select ,0,0,0.0
+train,BruteForce,cmd=,0,0,0.0
+train,BruteForce,ip=,0,0,0.0
+train,BruteForce,admin,43,32,0.0016
+train,BruteForce,login,0,0,0.0

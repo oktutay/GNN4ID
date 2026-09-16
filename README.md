@@ -29,7 +29,7 @@ For our experimentation and real-time detection, we set a limit on the maximum n
 <p align="justify">
 As we have two types of nodes, we also have two different types of edges: link edges and contain edges. The link edges connect packet nodes to packet nodes, while the contain edges connect flow nodes to packet nodes. The attributes of each node and edge are as follows:
 
-1. **Flow Node**: ~76 Statistical Flow Features (NFStream output, plus the 16 explainable rolling-window features from paper Table 1, minus the meta columns dropped by `NIDSDataset` such as `id`, `vlan_id`, MAC/OUI, raw timestamps, and `bidirectional_*_packets`)
+1. **Flow Node**: 82 features = 46 NFStream statistics + `packet_size_variation` + 28 rolling-window explainable features (paper Table 1, two groupings: per destination and per src-dst pair) + 7 one-hot (`Exp_*`, `proto_*`). The 29 identifier / redundant NFStream columns are dropped before the graph; the exact list and order live in `Utility/Schema.py` (`FLOW_FEATURE_NAMES_82`).
 2. **Packet Node**: 1500 Features (Payload Data Byte-wise)
 3. **Contain Edge**: 4 Features (packet direction + IP / transport / payload sizes)
 4. **Link Edge**: 1 Feature (Time delta between each consecutive packet)
@@ -57,3 +57,45 @@ A pictorial representation of the graph object is provided below:
 ```
 
 
+
+
+## Preprocessing v2 (leak-free, author-compatible) — `run_preprocessing.py`
+
+One command replaces the notebook sequence and produces the same `df_class_8_{train,test}.csv`
+layout (97 columns, byte-compatible with the published Google-Drive CSVs and the checkpoints):
+
+```bash
+python run_preprocessing.py --pcap-dir /path/to/CIC_IoT2023/PCAP --out-dir /path/to/out            # authors' setup
+python run_preprocessing.py --pcap-dir ... --out-dir ... --no-oversample                               # class-weight variant
+python run_preprocessing.py --pcap-dir ... --out-dir ... --window 60s --window-unit time               # time window (Algorithm 1)
+python run_preprocessing.py --csv-dir /path/to/raw_csv --out-dir ... --stages features,split,combine,class8
+python Debug/verify_preprocessing.py --out-dir /path/to/out --drive-train df_class_8_train.csv          # 9 groups of assertions
+```
+
+Stage order and the leakage argument:
+
+```
+extract   pcap -> raw/<Class>-<Short>_<n>.csv     NFStream, 20 packets/flow, idle 120 s
+features  raw  -> features/<stem>.csv             28 rolling columns + packet_size_variation + one-hots,
+                                                  computed on the WHOLE time-ordered file (label-free,
+                                                  backward-looking -> a later temporal split cannot leak;
+                                                  computing them after undersampling, as the June-2026
+                                                  revision did, gives train and test different units)
+split     features -> split/{train,test}/         attacker-MAC filter, latest 20 % = test pool (cap 4000),
+                                                  earlier 80 % = train pool (feature dedup, cap 20000/file)
+combine   split -> combined/{train,test}/         per class: dedup, proportional per-sub-attack caps,
+                                                  GLOBAL test-vs-train removal, train-only oversampling to
+                                                  20000 (paper Table 4); class_weights.json (pre-oversample)
+class8    combined -> df_class_8_{train,test}.csv drop the 29 identifier columns, assert the 97-col header
+graphs    (optional) NIDSDataset -> processed/    same as build_graphs.py
+```
+
+Options: `--window-unit flows|time|packets` (default `flows`, 350 = the authors' code; the paper only says
+"rolling time window"), `--count-mode author|packets|flows` (the authors count UDP/TCP/ICMP/HTTP/DNS as
+flows but flags as packets), `--schema author82|table1`, `--rolling-scope all|filtered`, `--test-pick
+random|tail`, `--n-dissections N` (adds NFStream L7 columns such as SNI/JA3, dropped before the graph
+unless `--keep-l7`), `--include-packetflag` (1508-d packet nodes). File names are resolved with a
+case-insensitive longest-prefix match on the 34 CIC-IoT2023 folder names (`Utility/Schema.py::CIC_SUBTYPES`),
+which also fixes the `DDoS-SlowLoris` / `BrowserHijacking` / `BenignTraffic*` naming bugs of the original
+`name_mapping`. Every stage is re-runnable, nothing is overwritten, and `manifest.json` records the counts.
+`make_preprocess_zip.py` packages the code (no data) for another machine. Details: `BAOCAO_PREPROCESS_V2.md`.

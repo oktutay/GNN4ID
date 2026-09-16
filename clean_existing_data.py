@@ -21,6 +21,11 @@ consumed by the training loss instead (train.py --class-weights).
 
 Outputs (next to the inputs):
   df_class_8_train_clean.csv, df_class_8_test_clean.csv, class_weights.json
+
+NOTE (preprocess v2, 2026-09): CSVs produced by run_preprocessing.py are already
+deduplicated at the feature level and test-vs-train disjoint, so this script is
+only a no-op check on them.  It remains the post-hoc path for the authors'
+Google-Drive CSVs, whose raw per-pcap files are not available.
 """
 
 import json

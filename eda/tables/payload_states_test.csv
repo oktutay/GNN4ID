@@ -1,0 +1,9 @@
+split,class,flows,packets,empty_pk,tls_control_pk,tls_appdata_pk,printable_pk,binary_pk,empty_share,tls_control_share,tls_appdata_share,printable_share,binary_share,flows_with_printable_share
+test,Benign,4000,32880,13597,430,3637,752,14464,0.414,0.013,0.111,0.023,0.44,0.05
+test,WebBased,1090,9629,4696,252,812,2021,1848,0.488,0.026,0.084,0.21,0.192,0.38
+test,Spoofing,4000,24140,4740,84,1619,855,16842,0.196,0.003,0.067,0.035,0.698,0.029
+test,Recon,4000,12152,9607,470,211,513,1351,0.791,0.039,0.017,0.042,0.111,0.061
+test,Mirai,4000,79842,0,1,0,3,79838,0.0,0.0,0.0,0.0,1.0,0.0
+test,Dos,4000,5889,5887,0,0,0,2,1.0,0.0,0.0,0.0,0.0,0.0
+test,DDos,4000,79956,79950,2,0,4,0,1.0,0.0,0.0,0.0,0.0,0.001
+test,BruteForce,467,5999,3276,0,188,743,1792,0.546,0.0,0.031,0.124,0.299,0.488
