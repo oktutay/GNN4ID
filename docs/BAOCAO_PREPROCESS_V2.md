@@ -1,5 +1,7 @@
 # Báo cáo hoàn thiện pre-process GNN4ID / XG-NID (v2, 16/09/2026)
 
+*(Đường dẫn file trong báo cáo tính từ thư mục `GNN4ID/`; các báo cáo khác nằm cùng thư mục `docs/`; EDA và khảo sát ở `XG_NID/`.)*
+
 Phạm vi: rà lại toàn bộ khối tiền xử lý CIC-IoT2023 của bản fork `XG_NID/GNN4ID` (Flow and Feature
 Generator → Explainable Feature Extractor → Data preprocessing), đối chiếu với paper XG-NID, với code gốc
 của tác giả (upstream `Yasir-ali-farrukh/GNN4ID`, commit `551d1f1`) và với dữ liệu tác giả công bố trên
@@ -116,7 +118,7 @@ label_dict=)` giữ chữ ký cũ (kwarg cũ được ánh xạ).
 | `Debug/verify_preprocessing.py` (mới) | 9 nhóm assertion trên thư mục output |
 | `tests/` (mới) | 17 unit test (`test_rolling_units`, `test_resolver`, `test_split_combine`) + bản gốc của tác giả làm fixture |
 | 6 notebook | `rename_files()` qua resolver, features → `features/`, split → `split/`, `Combining_classes(... oversample=True, out_dir=combined)`, `build_class8_csvs()` thay 4 cell concat/drop, sửa bug test glob, `FLOW_FEATURE_NAMES_82`; output đã xoá |
-| `README.md`, `FEATURES_VA_Y_NGHIA.md` | mục "Preprocessing v2", flow node 82 cột, bảng 28 cột rolling |
+| `README.md`, `docs/FEATURES_VA_Y_NGHIA.md` | mục "Preprocessing v2", flow node 82 cột, bảng 28 cột rolling |
 | `make_preprocess_zip.py` (mới) | đóng gói code (không data/checkpoint) thành `dist/gnn4id_preprocess_<sha>_<ngày>.zip` |
 
 ## 5. Kiểm chứng đã chạy (máy này, 2 pcap: XSS, DictionaryBruteForce)

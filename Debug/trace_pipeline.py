@@ -41,7 +41,6 @@ Examples
 
 import argparse
 import glob
-import json
 import inspect
 import os
 import shutil
@@ -127,34 +126,6 @@ class Paths:
         for d in (self.work, self.raw, self.logs):
             os.makedirs(d, exist_ok=True)
 
-    @property
-    def state_file(self):
-        return os.path.join(self.work, ".trace_state.json")
-
-
-def _state(p):
-    try:
-        with open(p.state_file) as fh:
-            return json.load(fh)
-    except Exception:
-        return {}
-
-
-def state_done(p, stage):
-    return bool(_state(p).get(stage))
-
-
-def state_mark(p, stage, done=True):
-    d = _state(p)
-    d[stage] = done
-    with open(p.state_file, "w") as fh:
-        json.dump(d, fh, indent=1)
-
-
-def guard(cfg, p, stage, why):
-    """Kept for compatibility: no stage writes in place any more (features ->
-    features/, split -> split/, combine -> combined/), so nothing is guarded."""
-    return False
 
 
 # ---------------------------------------------------------------------------

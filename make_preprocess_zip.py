@@ -14,11 +14,9 @@ file + git HEAD) is written into the zip.
 """
 import argparse
 import hashlib
-import io
 import json
 import os
 import subprocess
-import sys
 import time
 import zipfile
 
@@ -28,12 +26,12 @@ INCLUDE_FILES = [
     "run_preprocessing.py", "build_graphs.py", "clean_existing_data.py", "train.py",
     "train_tuned.py", "explain.py", "make_preprocess_zip.py",
     "README.md", "requirement.txt", "LICENSE", ".gitignore",
-    "BAOCAO_PREPROCESS_V2.md", "FEATURES_VA_Y_NGHIA.md",
+    "docs/BAOCAO_PREPROCESS_V2.md", "docs/FEATURES_VA_Y_NGHIA.md",
     "GNN4ID.ipynb", "Data_preprocessing_CIC-IoT2023.ipynb", "GNN4ID_Model.ipynb",
     "1_GNN4ID_pcap.ipynb", "2_Data_preprocessing_pcap.ipynb", "3_GNN4ID_Model_pcap.ipynb",
 ]
 INCLUDE_DIRS = ["Utility", "Debug", "tests", ".vscode"]
-EXCLUDE_DIR_NAMES = {"__pycache__", ".git", "data", "checkpoints", "logs", "_paper_text", "Promt", "dist"}
+EXCLUDE_DIR_NAMES = {"__pycache__", ".git", "data", "checkpoints", "logs", "docs", "dist"}
 EXCLUDE_SUFFIXES = (".pyc", ".pt", ".pth", ".pdf", ".log", ".trace", ".csv", ".pcap", ".pcapng")
 
 

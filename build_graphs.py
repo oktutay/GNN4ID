@@ -5,7 +5,6 @@ the .pt files in <data-root>/processed/.
 """
 
 import os
-import sys
 
 from Utility.Functions import NIDSDataset
 

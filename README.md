@@ -59,6 +59,22 @@ A pictorial representation of the graph object is provided below:
 
 
 
+## Repository layout
+
+```
+run_preprocessing.py        pcap -> raw -> features -> split -> combine -> df_class_8_{train,test}.csv (-> graphs)
+build_graphs.py, train.py   graph objects (NIDSDataset) and HGNN training on the class-8 CSVs
+clean_existing_data.py      post-hoc dedup for the authors' Google-Drive CSVs
+make_preprocess_zip.py      package the code (no data) for another machine -> dist/
+Utility/                    Schema.py, Feature_extractor_*.py, Additional_Features.py, Functions.py, Model.py, Training.py, explainers
+Debug/                      trace_pipeline.py (6-stage debug driver), verify_preprocessing.py (assertions), autobreak.py, README_TRACE.md
+tests/                      unit tests (python -m unittest discover -s tests)
+eda/                        EDA scripts + tables behind ../CIC_IoT2023_EDA_v2_VI.md
+docs/                       reports (Vietnamese), paper text, the XG-NID PDF, the original prompt
+*.ipynb                     the authors' three notebooks + the three Linux copies (1_/2_/3_*_pcap.ipynb)
+checkpoints/, logs/         reproduction artefacts
+```
+
 ## Preprocessing v2 (leak-free, author-compatible) — `run_preprocessing.py`
 
 One command replaces the notebook sequence and produces the same `df_class_8_{train,test}.csv`
@@ -98,4 +114,4 @@ unless `--keep-l7`), `--include-packetflag` (1508-d packet nodes). File names ar
 case-insensitive longest-prefix match on the 34 CIC-IoT2023 folder names (`Utility/Schema.py::CIC_SUBTYPES`),
 which also fixes the `DDoS-SlowLoris` / `BrowserHijacking` / `BenignTraffic*` naming bugs of the original
 `name_mapping`. Every stage is re-runnable, nothing is overwritten, and `manifest.json` records the counts.
-`make_preprocess_zip.py` packages the code (no data) for another machine. Details: `BAOCAO_PREPROCESS_V2.md`.
+`make_preprocess_zip.py` packages the code (no data) for another machine. Details: `docs/BAOCAO_PREPROCESS_V2.md` (Vietnamese); all reports live in `docs/`.

@@ -18,7 +18,7 @@ pass an instance of HFCausalBackend (transformers + bitsandbytes 4-bit).
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 import numpy as np
 

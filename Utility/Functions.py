@@ -6,7 +6,7 @@ import os
 import re
 import glob
 from torch_geometric.data import HeteroData
-from torch_geometric.data import Dataset, Data
+from torch_geometric.data import Dataset
 import torch_geometric.transforms as T
 import sys
 import random
@@ -17,7 +17,7 @@ from collections import namedtuple
 from Utility.Schema import (
     CIC_SUBTYPES, CIC_IOT2023_ATTACKER_MACS, DEFAULT_LABELS, LABEL_ALIASES,
     IDENTIFIER_DROP_29, L7_COLUMNS_9, SPLT_COLUMNS_3, HELPER_COLUMNS, TIME_COL,
-    CLASS8_HEADER_97, UDPS_14,
+    CLASS8_HEADER_97,
 )
 
 

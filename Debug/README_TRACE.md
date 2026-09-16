@@ -162,7 +162,7 @@ Option hay dùng: `--trace-max-calls 20` (log dày hơn), `--trace-echo` (in lu�
 
 (Thứ tự **features → split** là thứ tự chốt 16/09/2026: rolling tính trên TOÀN file thô, không nhãn,
 chỉ nhìn quá khứ ⇒ temporal split sau đó không leak; xem docstring `Utility/Additional_Features.py`
-và `BAOCAO_PREPROCESS_V2.md`.)
+và `docs/BAOCAO_PREPROCESS_V2.md`.)
 
 ```
 data/Debug and Trace/*.pcap

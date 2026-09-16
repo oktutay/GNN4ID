@@ -16,9 +16,7 @@ Usage (unchanged positional form, used by the notebooks and run_preprocessing.py
 import argparse
 import os
 
-import nfstream
 from nfstream import NFStreamer, NFPlugin
-import pandas as pd
 
 
 class My_Custom(NFPlugin):

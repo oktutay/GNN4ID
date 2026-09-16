@@ -14,11 +14,11 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 
 from Utility.Functions import (  # noqa: E402
-    split_csv, Combining_classes, build_class8_csvs, row_keys, feature_view_columns,
+    split_csv, Combining_classes, build_class8_csvs, row_keys,
     proportional_cap, oversample_train, _allocate, dedup_across_splits)
 from Utility.Additional_Features import compute_rolling_features  # noqa: E402
 from Utility.Schema import (  # noqa: E402
-    CLASS8_HEADER_97, NFSTREAM_NUMERIC_46, UDPS_14, IDENTIFIER_DROP_29, TIME_COL,
+    CLASS8_HEADER_97, NFSTREAM_NUMERIC_46, UDPS_14, TIME_COL,
     CIC_IOT2023_ATTACKER_MACS)
 
 ATTACKER = sorted(CIC_IOT2023_ATTACKER_MACS)[0]

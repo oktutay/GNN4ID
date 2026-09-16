@@ -42,7 +42,7 @@ import pandas as pd
 from pandas.api.indexers import BaseIndexer
 
 from Utility.Schema import (
-    ROLLING_28, TABLE1_MAP, TIME_COL, ONEHOT_7,
+    ROLLING_28, TABLE1_MAP, TIME_COL,
     DEFAULT_HTTP_PORTS, DEFAULT_DNS_PORTS, DEFAULT_VULNERABLE_PORTS,
 )
 

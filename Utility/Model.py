@@ -1,4 +1,4 @@
-from torch_geometric.nn import HeteroConv, Linear, SAGEConv, global_mean_pool, Sequential, to_hetero, GraphConv, GATConv
+from torch_geometric.nn import HeteroConv, SAGEConv, GATConv
 import torch.nn.functional as F
 import torch_geometric.nn as pyg_nn
 import torch
